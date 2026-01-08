@@ -4,7 +4,7 @@ API routes for tasks.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
@@ -17,7 +17,7 @@ class TaskCreate(BaseModel):
     """Task creation schema"""
     project_id: int
     title: str
-    description: str | None = None
+    description: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -25,9 +25,9 @@ class TaskResponse(BaseModel):
     id: int
     project_id: int
     title: str
-    description: str | None
+    description: Optional[str]
     status: TaskStatus
-    current_phase: PhaseType | None
+    current_phase: Optional[PhaseType]
     version: int
     
     class Config:
@@ -35,7 +35,7 @@ class TaskResponse(BaseModel):
 
 
 @router.get("/", response_model=List[TaskResponse])
-async def list_tasks(project_id: int | None = None, db: Session = Depends(get_db)):
+async def list_tasks(project_id: Optional[int] = None, db: Session = Depends(get_db)):
     """List all tasks, optionally filtered by project"""
     # Placeholder - returns empty list
     return []

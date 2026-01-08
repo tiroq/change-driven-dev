@@ -4,7 +4,7 @@ API routes for change requests.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
@@ -34,7 +34,7 @@ class ChangeRequestResponse(BaseModel):
 
 
 @router.get("/", response_model=List[ChangeRequestResponse])
-async def list_change_requests(task_id: int | None = None, db: Session = Depends(get_db)):
+async def list_change_requests(task_id: Optional[int] = None, db: Session = Depends(get_db)):
     """List all change requests, optionally filtered by task"""
     # Placeholder - returns empty list
     return []

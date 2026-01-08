@@ -4,7 +4,7 @@ API routes for projects.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
@@ -16,14 +16,14 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 class ProjectCreate(BaseModel):
     """Project creation schema"""
     name: str
-    description: str | None = None
+    description: Optional[str] = None
 
 
 class ProjectResponse(BaseModel):
     """Project response schema"""
     id: int
     name: str
-    description: str | None
+    description: Optional[str]
     db_path: str
     
     class Config:
