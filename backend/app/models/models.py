@@ -158,7 +158,7 @@ class Artifact(Base):
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
@@ -178,7 +178,7 @@ class TaskVersion(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     gates_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     deps_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of task IDs
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
@@ -195,7 +195,7 @@ class Run(Base):
     status: Mapped[RunStatus] = mapped_column(SQLEnum(RunStatus), default=RunStatus.RUNNING)
     log_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     gate_results: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     start_time: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -214,7 +214,7 @@ class ControlState(Base):
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     timeout_seconds: Mapped[int] = mapped_column(Integer, default=300)
     current_task_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
