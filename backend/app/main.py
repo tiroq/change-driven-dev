@@ -5,6 +5,7 @@ UI-first, stack-agnostic engineering control system.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api import projects_router, tasks_router, change_requests_router, artifacts_router
 from app.api.websocket import router as websocket_router
@@ -79,7 +80,7 @@ async def health():
     try:
         from app.db import get_db
         db = next(get_db(1))
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
     except Exception as e:
         health_status["services"]["database"] = f"error: {str(e)}"
