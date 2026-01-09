@@ -1,0 +1,89 @@
+# Change-Driven Development Project Configuration
+# Place this file in your project root directory
+
+# Project identification
+project_name: my-project
+default_engine: copilot-cli
+
+# Sandbox security settings
+sandbox:
+  # File path allowlist (glob patterns)
+  # Only files matching these patterns can be accessed by engines and gates
+  allowed_paths:
+    - "src/**"
+    - "tests/**"
+    - "docs/**"
+    - "*.md"
+    - "*.json"
+    - "*.yaml"
+    - "*.yml"
+    - "pyproject.toml"
+    - "package.json"
+    - "Makefile"
+  
+  # Command allowlist (whitelist approach)
+  # If specified, ONLY these commands can be executed
+  # If null/commented out, uses blocklist approach instead
+  allowed_commands:
+    - python
+    - python3
+    - node
+    - npm
+    - npx
+    - pytest
+    - jest
+    - git
+    - make
+    - ruff
+    - black
+    - mypy
+    - eslint
+    - tsc
+  
+  # Additional blocked commands (beyond built-in dangerous commands)
+  # These are blocked even if allowed_commands is null
+  blocked_commands: []
+  
+  # Default timeout for command execution (seconds)
+  command_timeout: 300
+
+# Quality gates configuration
+gates:
+  # Enable/disable gate execution
+  enabled: true
+  
+  # Timeout for individual gate execution (seconds)
+  timeout: 60
+  
+  # Whether to fail the task if gates fail
+  # If false, gates are advisory only
+  fail_on_error: true
+
+# Additional project metadata
+metadata:
+  version: "1.0.0"
+  description: "Project managed by change-driven-dev"
+  created_at: "2026-01-09"
+
+# Example gate configurations (add to tasks via UI)
+# gates:
+#   - name: lint
+#     description: Run code linter
+#     command: ruff check .
+#     pass_criteria: exit_code_0
+#     timeout: 30
+#     required: true
+#
+#   - name: unit-tests
+#     description: Run unit tests
+#     command: pytest tests/unit -v
+#     pass_criteria: exit_code_0
+#     timeout: 300
+#     required: true
+#
+#   - name: type-check
+#     description: Run type checker
+#     command: mypy src/
+#     pass_criteria: exit_code_0
+#     timeout: 60
+#     required: true
