@@ -90,16 +90,6 @@ health:
 
 	cd frontend && npm run format
 
-# Cleanup
-clean:
-	@echo "Cleaning build artifacts..."
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
-	@echo "✓ Cleanup complete"
-
 # Docker
 docker-up:
 	docker compose up -d

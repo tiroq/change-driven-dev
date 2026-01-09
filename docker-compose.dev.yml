@@ -1,5 +1,4 @@
 # Development docker-compose with hot reload
-version: '3.8'
 
 services:
   backend:
