@@ -103,6 +103,39 @@ class ApiService {
     })
   }
 
+  // Artifacts
+  async getArtifacts(projectId = null, artifactType = null) {
+    const params = new URLSearchParams()
+    if (projectId) params.append('project_id', projectId)
+    if (artifactType) params.append('artifact_type', artifactType)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/artifacts/${query}`)
+  }
+
+  async getArtifact(id) {
+    return this.request(`/artifacts/${id}`)
+  }
+
+  async getArtifactContent(id) {
+    return this.request(`/artifacts/${id}/content`)
+  }
+
+  async downloadArtifact(id) {
+    window.open(`${API_BASE_URL}/artifacts/${id}/download`, '_blank')
+  }
+
+  // Phase execution
+  async runPlanner(projectId, specContent, engineName = null) {
+    return this.request('/phase/plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: projectId,
+        spec_content: specContent,
+        engine_name: engineName
+      }),
+    })
+  }
+
   // WebSocket connection
   connectWebSocket(projectId = null, onMessage) {
     const wsUrl = projectId 
