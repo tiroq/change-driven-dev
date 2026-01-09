@@ -157,7 +157,9 @@ class Artifact(Base):
     artifact_type: Mapped[ArtifactType] = mapped_column(SQLEnum(ArtifactType), nullable=False)
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    storage_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)  # Actual file location
     sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # File size in bytes
     extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -165,6 +167,7 @@ class Artifact(Base):
     project: Mapped["Project"] = relationship("Project", back_populates="artifacts")
     task: Mapped[Optional["Task"]] = relationship("Task")
     run: Mapped[Optional["Run"]] = relationship("Run", back_populates="artifacts")
+
 
 
 class TaskVersion(Base):
