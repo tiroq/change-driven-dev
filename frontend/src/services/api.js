@@ -163,6 +163,18 @@ class ApiService {
     })
   }
 
+  async runArchitect(projectId, taskId, contextContent, engineName = null) {
+    return this.request('/phase/architect', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: projectId,
+        task_id: taskId,
+        context_content: contextContent,
+        engine_name: engineName
+      }),
+    })
+  }
+
   // WebSocket connection
   connectWebSocket(projectId = null, onMessage) {
     const wsUrl = projectId 
