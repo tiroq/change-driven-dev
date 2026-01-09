@@ -23,9 +23,6 @@ class OrchestrationService:
     Manages planner, architect, and coder execution.
     """
     
-    def __init__(self):
-        self.logger = RunLogger()
-    
     async def run_planner_phase(
         self,
         db: Session,
