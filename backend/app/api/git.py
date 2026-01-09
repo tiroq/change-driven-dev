@@ -1,39 +1,39 @@
 """
 API routes for Git integration.
 """
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
 from typing import Optional
 from pydantic import BaseModel
 
 from app.db import get_db
 from app.db import dao
-from app.services.git_service import GitService, GitStatus
+from app.services.git_service import GitService
 
 router = APIRouter(prefix="/api/git", tags=["git"])
 
 
-class CommitRequest(BaseModel):
-    """Request to create a commit"""
+class GitCommitRequest(BaseModel):
+    """Request to create a git commit"""
     project_id: int
     message: str
     author_name: Optional[str] = None
     author_email: Optional[str] = None
 
 
-@router.get("/status/{project_id}")
-async def get_git_status(
-    project_id: int,
-    db: Session = Depends(lambda: next(get_db(project_id)))
-):
+@router.get("/status")
+async def get_git_status(project_id: int):
     """
     Get git status for a project.
     
     Returns repository status including staged/unstaged files and branch info.
     """
+    db = next(get_db(project_id))
     project = dao.get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
     
     git_service = GitService(project.root_path)
     
@@ -47,20 +47,20 @@ async def get_git_status(
         )
 
 
-@router.post("/init/{project_id}")
-async def init_repository(
-    project_id: int,
-    initial_branch: str = "main",
-    db: Session = Depends(lambda: next(get_db(project_id)))
-):
+@router.post("/init")
+async def init_repository(project_id: int, initial_branch: str = "main"):
     """
     Initialize a git repository for a project.
     
     Creates a new git repository in the project's root directory.
     """
+    db = next(get_db(project_id))
     project = dao.get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
     
     git_service = GitService(project.root_path)
     
@@ -81,21 +81,22 @@ async def init_repository(
 
 
 @router.post("/commit")
-async def create_commit(
-    request: CommitRequest,
-    db: Session = Depends(lambda: next(get_db(request.project_id)))
-):
+async def create_commit(request: GitCommitRequest):
     """
     Create a git commit with all staged changes.
     
     Commits currently staged changes with the provided message.
     """
+    db = next(get_db(request.project_id))
     project = dao.get_project(db, request.project_id)
     if not project:
         raise HTTPException(
             status_code=404,
             detail=f"Project {request.project_id} not found"
         )
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
     
     git_service = GitService(project.root_path)
     
@@ -131,21 +132,21 @@ async def create_commit(
         )
 
 
-@router.get("/diff/{project_id}")
-async def get_diff(
-    project_id: int,
-    cached: bool = False,
-    db: Session = Depends(lambda: next(get_db(project_id)))
-):
+@router.get("/diff")
+async def get_diff(project_id: int, staged: bool = False):
     """
     Get diff of changes in the repository.
     
     Args:
-        cached: If true, shows staged changes; if false, shows unstaged changes
+        staged: If true, shows staged changes; if false, shows unstaged changes
     """
+    db = next(get_db(project_id))
     project = dao.get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
     
     git_service = GitService(project.root_path)
     
@@ -156,12 +157,12 @@ async def get_diff(
                 detail="Project is not a git repository"
             )
         
-        diff = await git_service.get_diff(cached=cached)
+        diff = await git_service.get_diff(cached=staged)
         
         return {
             "success": True,
             "diff": diff,
-            "cached": cached
+            "staged": staged
         }
         
     except Exception as e:
@@ -171,17 +172,18 @@ async def get_diff(
         )
 
 
-@router.get("/last-commit/{project_id}")
-async def get_last_commit(
-    project_id: int,
-    db: Session = Depends(lambda: next(get_db(project_id)))
-):
+@router.get("/log")
+async def get_git_log(project_id: int, max_count: int = 10):
     """
-    Get information about the last commit.
+    Get git commit log.
     """
+    db = next(get_db(project_id))
     project = dao.get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
     
     git_service = GitService(project.root_path)
     
@@ -197,16 +199,17 @@ async def get_last_commit(
         if not commit_info:
             return {
                 "success": False,
-                "message": "No commits found"
+                "message": "No commits found",
+                "commits": []
             }
         
         return {
             "success": True,
-            "commit": commit_info.dict()
+            "commits": [commit_info.dict()]
         }
         
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get last commit: {str(e)}"
+            detail=f"Failed to get commit log: {str(e)}"
         )

@@ -59,13 +59,13 @@ async def get_task_gates(task_id: int, db: Session = Depends(lambda: next(get_db
 async def update_task_gates(
     task_id: int,
     project_id: int,
-    gates: List[GateSpecRequest],
-    db: Session = Depends(lambda: next(get_db(project_id)))
+    gates: List[GateSpecRequest]
 ):
     """
     Update gates for a task.
     Creates a new TaskVersion with updated gates_json.
     """
+    db = next(get_db(project_id))
     task = dao.get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
@@ -106,13 +106,14 @@ async def update_task_gates(
 
 @router.post("/execute")
 async def execute_gates(
-    request: GateExecutionRequest,
-    db: Session = Depends(lambda: next(get_db(request.project_id)))
+    request: GateExecutionRequest
 ):
     """
     Execute all gates for a task.
     Returns gate execution results.
     """
+    db = next(get_db(request.project_id))
+    
     # Get task
     task = dao.get_task(db, request.task_id)
     if not task:
@@ -141,6 +142,13 @@ async def execute_gates(
         )
     
     # Load project config for sandbox settings
+    project = dao.get_project(db, request.project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail=f"Project {request.project_id} not found")
+    
+    if not project.root_path:
+        raise HTTPException(status_code=400, detail="Project root path not configured")
+    
     try:
         config = ProjectConfig.load_from_project(Path(project.root_path))
         allowed_commands = config.get_allowed_commands()
