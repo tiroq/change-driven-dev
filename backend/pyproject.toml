@@ -1,0 +1,17 @@
+[project]
+name = "change-driven-dev"
+version = "0.1.0"
+description = "UI-first, stack-agnostic engineering control system for AI-assisted development"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.1",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.23",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
