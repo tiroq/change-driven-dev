@@ -102,6 +102,51 @@ class ApiService {
       method: 'POST',
     })
   }
+
+  // WebSocket connection
+  connectWebSocket(projectId = null, onMessage) {
+    const wsUrl = projectId 
+      ? `ws://localhost:8000/ws/projects/${projectId}`
+      : `ws://localhost:8000/ws`
+    
+    const ws = new WebSocket(wsUrl)
+    
+    ws.onopen = () => {
+      console.log(`WebSocket connected${projectId ? ` for project ${projectId}` : ' (global)'}`)
+      // Send ping every 30 seconds to keep connection alive
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send('ping')
+        } else {
+          clearInterval(pingInterval)
+        }
+      }, 30000)
+      ws.pingInterval = pingInterval
+    }
+    
+    ws.onmessage = (event) => {
+      if (event.data === 'pong') return
+      try {
+        const data = JSON.parse(event.data)
+        onMessage(data)
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error)
+      }
+    }
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected')
+      if (ws.pingInterval) {
+        clearInterval(ws.pingInterval)
+      }
+    }
+    
+    return ws
+  }
 }
 
 export default new ApiService()
