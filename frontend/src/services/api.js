@@ -175,6 +175,63 @@ class ApiService {
     })
   }
 
+  async runCoder(projectId, taskId, engineName = null) {
+    return this.request('/phase/coder', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: projectId,
+        task_id: taskId,
+        engine_name: engineName
+      }),
+    })
+  }
+
+  // Git operations
+  async getGitStatus(projectId) {
+    return this.request(`/git/status/${projectId}`)
+  }
+
+  async initGitRepo(projectId, initialBranch = 'main') {
+    return this.request(`/git/init/${projectId}?initial_branch=${initialBranch}`, {
+      method: 'POST',
+    })
+  }
+
+  async createGitCommit(projectId, message, authorName = null, authorEmail = null) {
+    return this.request('/git/commit', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: projectId,
+        message: message,
+        author_name: authorName,
+        author_email: authorEmail
+      }),
+    })
+  }
+
+  // Gates operations
+  async getTaskGates(taskId) {
+    return this.request(`/gates/task/${taskId}`)
+  }
+
+  async updateTaskGates(taskId, projectId, gates) {
+    return this.request(`/gates/task/${taskId}?project_id=${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(gates),
+    })
+  }
+
+  async executeGates(projectId, taskId, stopOnFailure = false) {
+    return this.request('/gates/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        project_id: projectId,
+        task_id: taskId,
+        stop_on_failure: stopOnFailure
+      }),
+    })
+  }
+
   // WebSocket connection
   connectWebSocket(projectId = null, onMessage) {
     const wsUrl = projectId 
