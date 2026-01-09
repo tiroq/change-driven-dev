@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TaskList from '../components/TaskList'
 import api from '../services/api'
@@ -10,6 +10,9 @@ function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [wsConnected, setWsConnected] = useState(false)
+  const [notification, setNotification] = useState(null)
+  const wsRef = useRef(null)
   const [formData, setFormData] = useState({
     project_id: projectId || 1,
     title: '',
@@ -19,6 +22,75 @@ function TasksPage() {
 
   useEffect(() => {
     loadTasks()
+  }, [projectId])
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const connectWebSocket = () => {
+      try {
+        const ws = api.connectWebSocket(projectId)
+        
+        ws.onopen = () => {
+          console.log('WebSocket connected')
+          setWsConnected(true)
+        }
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            console.log('WebSocket event received:', data)
+            
+            // Handle different event types
+            if (data.event_type === 'task_created' || 
+                data.event_type === 'task_updated' || 
+                data.event_type === 'task_status_changed') {
+              
+              // Refresh tasks
+              loadTasks()
+              
+              // Show notification
+              const eventLabels = {
+                task_created: 'Task Created',
+                task_updated: 'Task Updated',
+                task_status_changed: 'Task Status Changed'
+              }
+              setNotification({
+                message: eventLabels[data.event_type] || 'Task Event',
+                timestamp: new Date().toLocaleTimeString()
+              })
+              setTimeout(() => setNotification(null), 3000)
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err)
+          }
+        }
+        
+        ws.onerror = (err) => {
+          console.error('WebSocket error:', err)
+          setWsConnected(false)
+        }
+        
+        ws.onclose = () => {
+          console.log('WebSocket disconnected')
+          setWsConnected(false)
+          // Attempt reconnection after 5 seconds
+          setTimeout(connectWebSocket, 5000)
+        }
+        
+        wsRef.current = ws
+      } catch (err) {
+        console.error('Failed to connect WebSocket:', err)
+      }
+    }
+    
+    connectWebSocket()
+    
+    // Cleanup on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+    }
   }, [projectId])
 
   const loadTasks = async () => {
