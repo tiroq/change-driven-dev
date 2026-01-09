@@ -134,20 +134,60 @@ function TasksPage() {
           <h2>Tasks</h2>
           {projectId && <p style={{ color: '#666', margin: 0 }}>Project ID: {projectId}</p>}
         </div>
-        <button 
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             padding: '0.5rem 1rem',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
+            backgroundColor: wsConnected ? '#d4edda' : '#f8d7da',
+            color: wsConnected ? '#155724' : '#721c24',
             borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {showCreateForm ? 'Cancel' : '+ New Task'}
-        </button>
+            fontSize: '0.875rem'
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: wsConnected ? '#28a745' : '#dc3545',
+              marginRight: '0.5rem'
+            }}></span>
+            {wsConnected ? 'Live' : 'Disconnected'}
+          </div>
+          <button 
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {showCreateForm ? 'Cancel' : '+ New Task'}
+          </button>
+        </div>
       </div>
+
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '1rem 1.5rem',
+          backgroundColor: '#28a745',
+          color: 'white',
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{ fontWeight: 'bold' }}>{notification.message}</div>
+          <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.9 }}>
+            {notification.timestamp}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ 
