@@ -177,7 +177,7 @@ def create_task_version(
     description: Optional[str] = None,
     gates_json: Optional[str] = None,
     deps_json: Optional[str] = None,
-    metadata: Optional[str] = None
+    extra_data: Optional[str] = None
 ) -> TaskVersion:
     """Create a new task version"""
     version = TaskVersion(
@@ -187,7 +187,7 @@ def create_task_version(
         description=description,
         gates_json=gates_json,
         deps_json=deps_json,
-        metadata=metadata
+        extra_data=extra_data
     )
     db.add(version)
     db.commit()
@@ -347,7 +347,7 @@ def create_artifact(
     task_id: Optional[int] = None,
     run_id: Optional[int] = None,
     sha256: Optional[str] = None,
-    metadata: Optional[str] = None
+    extra_data: Optional[str] = None
 ) -> Artifact:
     """Create a new artifact"""
     artifact = Artifact(
@@ -358,7 +358,7 @@ def create_artifact(
         name=name,
         file_path=file_path,
         sha256=sha256,
-        metadata=metadata
+        extra_data=extra_data
     )
     db.add(artifact)
     db.commit()
@@ -413,7 +413,7 @@ def create_run(
     task_id: int,
     engine: str,
     log_path: Optional[str] = None,
-    metadata: Optional[str] = None
+    extra_data: Optional[str] = None
 ) -> Run:
     """Create a new run"""
     run = Run(
@@ -421,7 +421,7 @@ def create_run(
         engine=engine,
         status=RunStatus.RUNNING,
         log_path=log_path,
-        metadata=metadata,
+        extra_data=extra_data,
         start_time=datetime.utcnow()
     )
     db.add(run)
