@@ -2,7 +2,7 @@
 API routes for artifacts.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,6 +13,7 @@ from app.db import get_db
 from app.db import dao
 from app.models import ArtifactType
 from app.core.events import EventType, Event, event_bus
+from app.services.artifacts import artifact_storage
 
 router = APIRouter(prefix="/api/artifacts", tags=["artifacts"])
 
@@ -70,7 +71,7 @@ async def list_artifacts(
 
 @router.post("/", response_model=ArtifactResponse)
 async def create_artifact(artifact: ArtifactCreate, db: Session = Depends(lambda: next(get_db(1)))):
-    """Create a new artifact"""
+    """Create a new artifact (metadata only)"""
     new_artifact = dao.create_artifact(
         db,
         project_id=artifact.project_id,
@@ -99,6 +100,49 @@ async def create_artifact(artifact: ArtifactCreate, db: Session = Depends(lambda
     return new_artifact
 
 
+@router.post("/upload")
+async def upload_artifact(
+    file: UploadFile = File(...),
+    project_id: int = Form(...),
+    artifact_type: str = Form(...),
+    task_id: Optional[int] = Form(None),
+    run_id: Optional[int] = Form(None),
+    db: Session = Depends(lambda: next(get_db(1)))
+):
+    """Upload an artifact file"""
+    try:
+        # Store artifact using storage service
+        artifact_dict = await artifact_storage.store_artifact(
+            session=db,
+            project_id=project_id,
+            task_id=task_id,
+            run_id=run_id,
+            artifact_type=artifact_type,
+            file_path=file.filename,
+            file_obj=file.file,
+            extra_data={"original_filename": file.filename, "content_type": file.content_type}
+        )
+        
+        # Emit event
+        event = Event(
+            event_type=EventType.ARTIFACT_CREATED,
+            project_id=project_id,
+            task_id=task_id,
+            data={
+                "artifact_id": artifact_dict["id"],
+                "file_path": artifact_dict["file_path"],
+                "type": artifact_type,
+                "size": artifact_dict["file_size"]
+            }
+        )
+        event_bus.publish(event)
+        
+        return artifact_dict
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload artifact: {str(e)}")
+
+
 @router.get("/{artifact_id}", response_model=ArtifactResponse)
 async def get_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
     """Get an artifact by ID"""
@@ -111,42 +155,50 @@ async def get_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_
 @router.get("/{artifact_id}/download")
 async def download_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
     """Download an artifact file"""
-    artifact = dao.get_artifact(db, artifact_id)
-    if not artifact:
-        raise HTTPException(status_code=404, detail=f"Artifact {artifact_id} not found")
-    
-    file_path = Path(artifact.file_path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"Artifact file not found at {artifact.file_path}")
-    
-    return FileResponse(
-        path=file_path,
-        filename=artifact.name,
-        media_type="application/octet-stream"
-    )
+    try:
+        artifact_dict, file_path = await artifact_storage.retrieve_artifact(db, artifact_id)
+        
+        # Verify file integrity
+        if artifact_dict.get("sha256"):
+            if not artifact_storage.verify_artifact(file_path, artifact_dict["sha256"]):
+                raise HTTPException(status_code=500, detail="Artifact file integrity check failed")
+        
+        return FileResponse(
+            path=file_path,
+            filename=Path(artifact_dict["file_path"]).name,
+            media_type="application/octet-stream"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{artifact_id}/content")
 async def get_artifact_content(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
     """Get artifact content (text files only)"""
-    artifact = dao.get_artifact(db, artifact_id)
-    if not artifact:
-        raise HTTPException(status_code=404, detail=f"Artifact {artifact_id} not found")
-    
-    file_path = Path(artifact.file_path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"Artifact file not found at {artifact.file_path}")
-    
-    # Check file size (limit to 1MB for text content)
-    if file_path.stat().st_size > 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large for text content display")
-    
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        return {"content": content, "name": artifact.name, "type": artifact.artifact_type.value}
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="File is not a text file")
+        artifact_dict, file_path = await artifact_storage.retrieve_artifact(db, artifact_id)
+        
+        # Check file size (limit to 1MB for text content)
+        if artifact_dict["file_size"] > 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large for text content display")
+        
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return {
+                "content": content,
+                "file_path": artifact_dict["file_path"],
+                "type": artifact_dict["artifact_type"]
+            }
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="File is not a text file")
+            
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/{artifact_id}")
@@ -157,14 +209,19 @@ async def delete_artifact(artifact_id: int, db: Session = Depends(lambda: next(g
         raise HTTPException(status_code=404, detail=f"Artifact {artifact_id} not found")
     
     project_id = artifact.project_id
+    
+    # Delete physical file if it exists
+    if artifact.storage_path:
+        storage_path = Path(artifact.storage_path)
+        if storage_path.exists():
+            # Use storage service for cleanup
+            filename = storage_path.name
+            artifact_storage.delete_artifact_file(project_id, artifact_id, filename)
+    
+    # Delete database record
     success = dao.delete_artifact(db, artifact_id)
     
     if success:
-        # Optionally delete physical file
-        file_path = Path(artifact.file_path)
-        if file_path.exists():
-            file_path.unlink()
-        
         # Emit event
         event = Event(
             event_type=EventType.ARTIFACT_DELETED,
