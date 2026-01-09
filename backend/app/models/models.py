@@ -89,6 +89,13 @@ class Task(Base):
     """Task model - versioned objects that flow through phases"""
     __tablename__ = "tasks"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[TaskStatus] = mapped_column(SQLEnum(TaskStatus), default=TaskStatus.PENDING)
+    current_phase: Mapped[Optional[PhaseType]] = mapped_column(SQLEnum(PhaseType), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
     active_version_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     engine_override: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
@@ -101,14 +108,7 @@ class Task(Base):
     change_requests: Mapped[list["ChangeRequest"]] = relationship("ChangeRequest", back_populates="task", cascade="all, delete-orphan")
     approvals: Mapped[list["Approval"]] = relationship("Approval", back_populates="task", cascade="all, delete-orphan")
     task_versions: Mapped[list["TaskVersion"]] = relationship("TaskVersion", back_populates="task", cascade="all, delete-orphan")
-    runs: Mapped[list["Run"]] = relationship("Run
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
-
-    # Relationships
-    project: Mapped["Project"] = relationship("Project", back_populates="tasks")
-    change_requests: Mapped[list["ChangeRequest"]] = relationship("ChangeRequest", back_populates="task", cascade="all, delete-orphan")
-    approvals: Mapped[list["Approval"]] = relationship("Approval", back_populates="task", cascade="all, delete-orphan")
+    runs: Mapped[list["Run"]] = relationship("Run", back_populates="task", cascade="all, delete-orphan")
 
 
 class ChangeRequest(Base):
