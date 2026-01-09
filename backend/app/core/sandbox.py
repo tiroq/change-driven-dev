@@ -251,7 +251,8 @@ class CommandRunner:
                 timeout=exec_timeout
             )
             
-            return proc.returncode, stdout.decode(), stderr.decode()
+            returncode = proc.returncode if proc.returncode is not None else -1
+            return returncode, stdout.decode(), stderr.decode()
             
         except asyncio.TimeoutError:
             # Kill process on timeout
