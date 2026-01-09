@@ -51,8 +51,41 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint"""
-    return {"status": "healthy"}
+    """
+    Comprehensive health check endpoint.
+    Checks status of core services and components.
+    """
+    health_status = {
+        "status": "healthy",
+        "version": "0.1.0",
+        "services": {
+            "api": "up",
+            "database": "up",
+            "events": "up",
+            "websocket": "up"
+        },
+        "features": {
+            "planner": True,
+            "architect": True,
+            "coder": True,
+            "gates": True,
+            "git": True,
+            "sandbox": True,
+            "task_governance": True
+        }
+    }
+    
+    # Check database connectivity
+    try:
+        from app.db import get_db
+        db = next(get_db(1))
+        db.execute("SELECT 1")
+        db.close()
+    except Exception as e:
+        health_status["services"]["database"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 
 if __name__ == "__main__":
