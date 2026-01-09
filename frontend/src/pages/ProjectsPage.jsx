@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
@@ -7,6 +7,9 @@ function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [wsConnected, setWsConnected] = useState(false)
+  const [notification, setNotification] = useState(null)
+  const wsRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -17,6 +20,75 @@ function ProjectsPage() {
 
   useEffect(() => {
     loadProjects()
+  }, [])
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const connectWebSocket = () => {
+      try {
+        const ws = api.connectWebSocket(null) // Global connection
+        
+        ws.onopen = () => {
+          console.log('WebSocket connected (global)')
+          setWsConnected(true)
+        }
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            console.log('WebSocket event received:', data)
+            
+            // Handle project-related events
+            if (data.event_type === 'project_created' || 
+                data.event_type === 'project_updated' || 
+                data.event_type === 'project_deleted') {
+              
+              // Refresh projects
+              loadProjects()
+              
+              // Show notification
+              const eventLabels = {
+                project_created: 'Project Created',
+                project_updated: 'Project Updated',
+                project_deleted: 'Project Deleted'
+              }
+              setNotification({
+                message: eventLabels[data.event_type] || 'Project Event',
+                timestamp: new Date().toLocaleTimeString()
+              })
+              setTimeout(() => setNotification(null), 3000)
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err)
+          }
+        }
+        
+        ws.onerror = (err) => {
+          console.error('WebSocket error:', err)
+          setWsConnected(false)
+        }
+        
+        ws.onclose = () => {
+          console.log('WebSocket disconnected')
+          setWsConnected(false)
+          // Attempt reconnection after 5 seconds
+          setTimeout(connectWebSocket, 5000)
+        }
+        
+        wsRef.current = ws
+      } catch (err) {
+        console.error('Failed to connect WebSocket:', err)
+      }
+    }
+    
+    connectWebSocket()
+    
+    // Cleanup on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+    }
   }, [])
 
   const loadProjects = async () => {
@@ -61,20 +133,60 @@ function ProjectsPage() {
     <div className="page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2>Projects</h2>
-        <button 
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             padding: '0.5rem 1rem',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
+            backgroundColor: wsConnected ? '#d4edda' : '#f8d7da',
+            color: wsConnected ? '#155724' : '#721c24',
             borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {showCreateForm ? 'Cancel' : '+ New Project'}
-        </button>
+            fontSize: '0.875rem'
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: wsConnected ? '#28a745' : '#dc3545',
+              marginRight: '0.5rem'
+            }}></span>
+            {wsConnected ? 'Live' : 'Disconnected'}
+          </div>
+          <button 
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {showCreateForm ? 'Cancel' : '+ New Project'}
+          </button>
+        </div>
       </div>
+
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '1rem 1.5rem',
+          backgroundColor: '#28a745',
+          color: 'white',
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          zIndex: 1000,
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{ fontWeight: 'bold' }}>{notification.message}</div>
+          <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.9 }}>
+            {notification.timestamp}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ 
