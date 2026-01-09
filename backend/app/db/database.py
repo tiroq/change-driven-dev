@@ -3,11 +3,11 @@ Database initialization and connection management.
 Supports per-project SQLite databases.
 """
 
-import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
+from threading import Lock
 
 from app.models import Base
 
@@ -20,6 +20,7 @@ class DatabaseManager:
         self.db_base_path.mkdir(parents=True, exist_ok=True)
         self.engines = {}
         self.session_makers = {}
+        self._lock = Lock()  # Thread synchronization for dictionary access
     
     def get_db_path(self, project_id: int) -> str:
         """Get database path for a project"""
@@ -30,7 +31,7 @@ class DatabaseManager:
         db_path = self.get_db_path(project_id)
         db_url = f"sqlite:///{db_path}"
         
-        engine = create_engine(db_url, echo=False)
+        engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=engine)
         
         self.engines[project_id] = engine
@@ -43,7 +44,10 @@ class DatabaseManager:
     def get_session(self, project_id: int) -> Generator[Session, None, None]:
         """Get database session for a project"""
         if project_id not in self.session_makers:
-            self.init_project_db(project_id)
+            with self._lock:
+                # Double-check after acquiring lock to prevent race conditions
+                if project_id not in self.session_makers:
+                    self.init_project_db(project_id)
         
         SessionLocal = self.session_makers[project_id]
         db = SessionLocal()

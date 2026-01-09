@@ -5,7 +5,7 @@ Core concepts: Tasks, ChangeRequests, Approvals, Phases
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, Enum as SQLEnum
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, Enum as SQLEnum, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import enum
 
@@ -50,8 +50,8 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     db_path: Mapped[str] = mapped_column(String(512), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     tasks: Mapped[list["Task"]] = relationship("Task", back_populates="project", cascade="all, delete-orphan")
@@ -68,8 +68,8 @@ class Task(Base):
     status: Mapped[TaskStatus] = mapped_column(SQLEnum(TaskStatus), default=TaskStatus.PENDING)
     current_phase: Mapped[Optional[PhaseType]] = mapped_column(SQLEnum(PhaseType), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
@@ -87,8 +87,8 @@ class ChangeRequest(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[ChangeRequestStatus] = mapped_column(SQLEnum(ChangeRequestStatus), default=ChangeRequestStatus.DRAFT)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     task: Mapped["Task"] = relationship("Task", back_populates="change_requests")
@@ -105,7 +105,7 @@ class Approval(Base):
     approver: Mapped[str] = mapped_column(String(255), nullable=False)
     approved: Mapped[bool] = mapped_column(nullable=False)
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
     task: Mapped["Task"] = relationship("Task", back_populates="approvals")

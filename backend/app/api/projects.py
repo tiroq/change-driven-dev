@@ -2,13 +2,12 @@
 API routes for projects.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
-from app.models import Project
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 

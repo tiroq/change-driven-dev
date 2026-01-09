@@ -2,13 +2,13 @@
 API routes for tasks.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
-from app.models import Task, TaskStatus, PhaseType
+from app.models import TaskStatus, PhaseType
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 

@@ -2,13 +2,13 @@
 API routes for change requests.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
 from app.db import get_db
-from app.models import ChangeRequest, ChangeRequestStatus, PhaseType
+from app.models import ChangeRequestStatus, PhaseType
 
 router = APIRouter(prefix="/api/change-requests", tags=["change-requests"])
 

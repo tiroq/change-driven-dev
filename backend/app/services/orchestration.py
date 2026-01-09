@@ -4,7 +4,7 @@ Engine-agnostic design for AI-assisted development.
 """
 
 from typing import Protocol, Optional
-from app.models import Task, PhaseType, TaskStatus
+from app.models import Task, PhaseType
 
 
 class PhaseExecutor(Protocol):
@@ -99,6 +99,7 @@ class OrchestrationEngine:
             if current_index < len(self.phase_flow) - 1:
                 return self.phase_flow[current_index + 1]
         except (ValueError, IndexError):
+            # Phase not found in flow or index out of bounds - return None
             pass
         
         return None
