@@ -11,7 +11,7 @@ from pathlib import Path
 
 from app.db import get_db
 from app.db import dao
-from app.models import ArtifactType
+from app.models.models import ArtifactType
 from app.core.events import EventType, Event, event_bus
 from app.services.artifacts import artifact_storage
 
@@ -111,6 +111,10 @@ async def upload_artifact(
 ):
     """Upload an artifact file"""
     try:
+        # Check if filename is provided
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Filename is required")
+        
         # Store artifact using storage service
         artifact_dict = artifact_storage.store_artifact(
             session=db,
