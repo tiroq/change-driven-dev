@@ -68,6 +68,33 @@ class ApiService {
     })
   }
 
+  async getTaskVersions(taskId) {
+    return this.request(`/tasks/${taskId}/versions`)
+  }
+
+  async splitTask(taskId, projectId, task1Title, task1Description, task2Title, task2Description) {
+    return this.request(`/tasks/${taskId}/split?project_id=${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        task1_title: task1Title,
+        task1_description: task1Description,
+        task2_title: task2Title,
+        task2_description: task2Description,
+      }),
+    })
+  }
+
+  async mergeTasks(projectId, taskIds, mergedTitle, mergedDescription) {
+    return this.request(`/tasks/merge?project_id=${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        task_ids: taskIds,
+        merged_title: mergedTitle,
+        merged_description: mergedDescription,
+      }),
+    })
+  }
+
   // Change Requests
   async getChangeRequests(taskId = null) {
     const query = taskId ? `?task_id=${taskId}` : ''
