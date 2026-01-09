@@ -73,7 +73,7 @@ class GitService:
         )
         
         stdout, stderr = await proc.communicate()
-        exit_code = proc.returncode
+        exit_code = proc.returncode if proc.returncode is not None else -1
         
         stdout_str = stdout.decode() if stdout else ""
         stderr_str = stderr.decode() if stderr else ""
