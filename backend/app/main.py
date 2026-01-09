@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import projects_router, tasks_router, change_requests_router, artifacts_router
+from app.api.websocket import router as websocket_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -29,6 +30,7 @@ app.include_router(projects_router)
 app.include_router(tasks_router)
 app.include_router(change_requests_router)
 app.include_router(artifacts_router)
+app.include_router(websocket_router)
 
 
 @app.get("/")
