@@ -27,6 +27,13 @@ class ArchitectRequest(BaseModel):
     engine_name: Optional[str] = None
 
 
+class CoderRequest(BaseModel):
+    """Request to run coder phase"""
+    project_id: int
+    task_id: int
+    engine_name: Optional[str] = None
+
+
 @router.post("/plan")
 async def run_planner(request: PlanRequest, db: Session = Depends(lambda: next(get_db(request.project_id)))):
     """
@@ -78,3 +85,33 @@ async def run_architect(request: ArchitectRequest, db: Session = Depends(lambda:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to run architect: {str(e)}")
+
+
+@router.post("/coder")
+async def run_coder(request: CoderRequest, db: Session = Depends(lambda: next(get_db(request.project_id)))):
+    """
+    Execute coder phase for a task.
+    
+    Implements the task, runs gates, and commits on success.
+    Task must be in APPROVED status before execution.
+    """
+    try:
+        result = await orchestration_service.run_coder_phase(
+            db=db,
+            project_id=request.project_id,
+            task_id=request.task_id,
+            engine_name=request.engine_name
+        )
+        
+        # Coder phase can "succeed" with gate failures, so check gates_passed
+        if not result.get("gates_passed", False) and result.get("success", False) is False:
+            # Only raise error if there was an actual execution error
+            if "error" in result and "Gates failed" not in result["error"]:
+                raise HTTPException(status_code=500, detail=result.get("error", "Coder phase failed"))
+        
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to run coder: {str(e)}")

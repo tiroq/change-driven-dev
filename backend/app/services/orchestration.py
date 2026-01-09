@@ -694,6 +694,413 @@ Provide 2-3 architecture options with trade-offs."""
             adr_artifacts.append(artifact)
         
         return adr_artifacts
+    
+    async def run_coder_phase(
+        self,
+        db: Session,
+        project_id: int,
+        task_id: int,
+        engine_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute coder phase to implement an approved task.
+        
+        Workflow:
+        1. Verify task is approved
+        2. Build context bundle (task, architecture, files)
+        3. Execute engine with coder prompt
+        4. Run gates on implementation
+        5. If gates pass: commit changes
+        6. If gates fail: update task with error, increment attempts
+        
+        Args:
+            db: Database session
+            project_id: ID of the project
+            task_id: ID of the task to implement
+            engine_name: Optional engine override
+            
+        Returns:
+            Dict containing run results and gate execution summary
+        """
+        from ..core.gates import GateRunner, GateSpec
+        from ..core.sandbox import CommandRunner
+        from ..core.config import ProjectConfig
+        from ..services.git_service import GitService
+        
+        # Get project and task
+        project = dao.get_project(db, project_id)
+        task = dao.get_task(db, task_id)
+        
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+        
+        # Verify task is approved
+        if task.status != TaskStatus.APPROVED:
+            raise ValueError(
+                f"Task {task_id} must be APPROVED before coder execution. "
+                f"Current status: {task.status.value}"
+            )
+        
+        # Use project's default engine if not specified
+        if not engine_name:
+            engine_name = project.default_engine
+        
+        # Create run record
+        run = dao.create_run(
+            db=db,
+            project_id=project_id,
+            phase=PhaseType.CODER,
+            engine=engine_name,
+            status=RunStatus.RUNNING
+        )
+        
+        run_logger = RunLogger(run_id=run.id)
+        run_logger.info(f"Starting coder phase for task '{task.title}'")
+        
+        try:
+            # Increment attempts
+            dao.update_task(db, task_id, attempts=task.attempts + 1)
+            
+            # Create engine instance
+            engine = EngineFactory.create(
+                engine_name,
+                working_directory=project.root_path
+            )
+            
+            # Check engine health
+            if not await engine.health_check():
+                raise RuntimeError(f"Engine {engine_name} is not available")
+            
+            # Build context bundle
+            context = await self._build_coder_context(db, project_id, task_id)
+            
+            # Start engine session
+            session_result = await engine.start_session(
+                context={
+                    "working_directory": project.root_path,
+                    "task": task.title,
+                    "task_id": task_id
+                }
+            )
+            
+            if not session_result.success:
+                raise RuntimeError(f"Failed to start engine session: {session_result.error}")
+            
+            run_logger.info("Engine session started, executing coder")
+            
+            # Read coder prompt template
+            coder_prompt_path = Path(__file__).parent.parent.parent.parent / "PROMPTS" / "coder.md"
+            if coder_prompt_path.exists():
+                with open(coder_prompt_path, 'r') as f:
+                    coder_template = f.read()
+                
+                # Build full prompt
+                full_prompt = f"""{coder_template}
+
+## Task to Implement
+ID: {task_id}
+Title: {task.title}
+Description: {task.description or 'No description provided'}
+
+## Context
+{context}
+
+Please implement this task following the architecture and constraints.
+Focus on minimal, correct changes that pass all gates."""
+            else:
+                full_prompt = f"""Implement this task:
+
+Task ID: {task_id}
+Title: {task.title}
+Description: {task.description or ''}
+
+{context}
+
+Implement the changes needed to complete this task."""
+            
+            # Execute with engine
+            result = await engine.execute(full_prompt)
+            
+            if not result.success:
+                raise RuntimeError(f"Coder execution failed: {result.error}")
+            
+            run_logger.info("Coder completed, running gates")
+            
+            # Save transcript
+            transcript = await engine.get_transcript()
+            transcript_artifact = self._save_transcript_artifact(
+                db=db,
+                project_id=project_id,
+                run_id=run.id,
+                transcript=transcript,
+                phase="coder"
+            )
+            
+            # Stop engine session
+            await engine.stop_session()
+            
+            # Run gates
+            gate_results = await self._run_task_gates(
+                db=db,
+                project=project,
+                task_id=task_id
+            )
+            
+            gates_passed = gate_results.get("all_passed", False)
+            
+            if gates_passed:
+                run_logger.info("All gates passed, committing changes")
+                
+                # Commit changes with git
+                git_service = GitService(project.root_path)
+                
+                # Check if repo exists
+                if await git_service.is_repo():
+                    commit_sha = await git_service.create_task_commit(
+                        task_id=task_id,
+                        task_title=task.title,
+                        phase="coder",
+                        gate_results=gate_results
+                    )
+                    run_logger.info(f"Changes committed: {commit_sha}")
+                else:
+                    run_logger.warning("Project is not a git repo, skipping commit")
+                    commit_sha = None
+                
+                # Update task status to completed
+                dao.update_task(
+                    db,
+                    task_id,
+                    status=TaskStatus.COMPLETED,
+                    current_phase=PhaseType.CODER
+                )
+                
+                # Update run status
+                dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
+                
+                run_logger.info("Coder phase completed successfully")
+                
+                # Emit completion event
+                event = Event(
+                    event_type=EventType.RUN_COMPLETED,
+                    project_id=project_id,
+                    task_id=task_id,
+                    data={
+                        "run_id": run.id,
+                        "phase": PhaseType.CODER.value,
+                        "gates_passed": True,
+                        "commit_sha": commit_sha
+                    }
+                )
+                event_bus.publish(event)
+                
+                return {
+                    "success": True,
+                    "run_id": run.id,
+                    "transcript_artifact_id": transcript_artifact.id,
+                    "gates_passed": True,
+                    "gate_results": gate_results,
+                    "commit_sha": commit_sha,
+                    "task_status": TaskStatus.COMPLETED.value
+                }
+            
+            else:
+                run_logger.error("Gates failed, task not complete")
+                
+                # Keep task in approved state for retry
+                # Update run status to failed
+                dao.update_run(
+                    db,
+                    run.id,
+                    {
+                        "status": RunStatus.FAILED,
+                        "error": f"Gates failed: {gate_results['summary']}"
+                    }
+                )
+                
+                run_logger.info("Coder phase completed with gate failures")
+                
+                # Emit failure event
+                event = Event(
+                    event_type=EventType.RUN_FAILED,
+                    project_id=project_id,
+                    task_id=task_id,
+                    data={
+                        "run_id": run.id,
+                        "phase": PhaseType.CODER.value,
+                        "gates_passed": False,
+                        "gate_summary": gate_results["summary"]
+                    }
+                )
+                event_bus.publish(event)
+                
+                return {
+                    "success": False,
+                    "run_id": run.id,
+                    "transcript_artifact_id": transcript_artifact.id,
+                    "gates_passed": False,
+                    "gate_results": gate_results,
+                    "task_status": task.status.value,
+                    "error": "Gates failed, see gate_results for details"
+                }
+            
+        except Exception as e:
+            run_logger.error(f"Coder phase failed: {str(e)}")
+            dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
+            
+            # Emit failure event
+            event = Event(
+                event_type=EventType.RUN_FAILED,
+                project_id=project_id,
+                task_id=task_id,
+                data={
+                    "run_id": run.id,
+                    "phase": PhaseType.CODER.value,
+                    "error": str(e)
+                }
+            )
+            event_bus.publish(event)
+            
+            return {
+                "success": False,
+                "run_id": run.id,
+                "error": str(e)
+            }
+    
+    async def _build_coder_context(
+        self,
+        db: Session,
+        project_id: int,
+        task_id: int
+    ) -> str:
+        """
+        Build context bundle for coder execution.
+        
+        Includes:
+        - Task details and version history
+        - Architecture artifacts
+        - Related files/dependencies
+        
+        Args:
+            db: Database session
+            project_id: Project ID
+            task_id: Task ID
+            
+        Returns:
+            Context string for coder prompt
+        """
+        context_parts = []
+        
+        # Get task
+        task = dao.get_task(db, task_id)
+        
+        # Get architecture artifacts for this task
+        arch_artifacts = dao.list_artifacts(
+            db,
+            project_id=project_id,
+            artifact_type=ArtifactType.ARCHITECTURE,
+            task_id=task_id
+        )
+        
+        if arch_artifacts:
+            context_parts.append("## Architecture")
+            context_parts.append(
+                "Architecture options and decisions have been defined for this task. "
+                "Follow the approved architecture approach."
+            )
+        
+        # Get task version history
+        versions = dao.list_task_versions(db, task_id)
+        if len(versions) > 1:
+            context_parts.append(f"\n## Task Evolution")
+            context_parts.append(f"This task has {len(versions)} versions showing its refinement.")
+        
+        # Get gates configuration
+        latest_version = dao.get_latest_task_version(db, task_id)
+        if latest_version and latest_version.gates_json:
+            context_parts.append("\n## Quality Gates")
+            context_parts.append(
+                "Your implementation must pass the configured quality gates. "
+                "Focus on correctness and quality."
+            )
+        
+        return "\n".join(context_parts) if context_parts else "No additional context available."
+    
+    async def _run_task_gates(
+        self,
+        db: Session,
+        project,
+        task_id: int
+    ) -> Dict[str, Any]:
+        """
+        Run gates for a task and return results.
+        
+        Args:
+            db: Database session
+            project: Project model instance
+            task_id: Task ID
+            
+        Returns:
+            Gate execution results dict
+        """
+        from ..core.gates import GateRunner, GateSpec
+        from ..core.sandbox import CommandRunner
+        from ..core.config import ProjectConfig
+        
+        # Get gates from task
+        latest_version = dao.get_latest_task_version(db, task_id)
+        
+        if not latest_version or not latest_version.gates_json:
+            return {
+                "all_passed": True,
+                "results": [],
+                "summary": {"total": 0, "passed": 0, "failed": 0}
+            }
+        
+        try:
+            gates_data = json.loads(latest_version.gates_json)
+            gate_specs = [GateSpec(**g) for g in gates_data]
+        except (json.JSONDecodeError, ValueError):
+            return {
+                "all_passed": False,
+                "results": [],
+                "summary": {"total": 0, "passed": 0, "failed": 0},
+                "error": "Invalid gates configuration"
+            }
+        
+        # Load project config
+        try:
+            config = ProjectConfig.load_from_project(Path(project.root_path))
+            allowed_commands = config.get_allowed_commands()
+            blocked_commands = config.get_blocked_commands()
+        except Exception:
+            allowed_commands = None
+            blocked_commands = set()
+        
+        # Create command runner
+        cmd_runner = CommandRunner(
+            allowed_commands=allowed_commands,
+            blocked_commands=blocked_commands
+        )
+        
+        # Create gate runner
+        gate_runner = GateRunner(command_runner=cmd_runner)
+        
+        # Execute gates
+        results = await gate_runner.run_gates(
+            gates=gate_specs,
+            cwd=project.root_path,
+            stop_on_failure=False
+        )
+        
+        # Get summary
+        summary = gate_runner.get_summary(results)
+        
+        return {
+            "all_passed": summary["all_passed"],
+            "results": [r.dict() for r in results],
+            "summary": summary
+        }
 
 
 # Global instance
