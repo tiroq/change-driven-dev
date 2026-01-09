@@ -364,6 +364,336 @@ class OrchestrationService:
             created_tasks.append(task)
         
         return created_tasks
+    
+    async def run_architect_phase(
+        self,
+        db: Session,
+        project_id: int,
+        task_id: int,
+        context_content: str,
+        engine_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute architect phase to generate architecture options and decisions.
+        
+        Args:
+            db: Database session
+            project_id: ID of the project
+            task_id: ID of the task to architect
+            context_content: Architecture context/requirements
+            engine_name: Optional engine override
+            
+        Returns:
+            Dict containing run results and created artifacts
+        """
+        # Get project and task
+        project = dao.get_project(db, project_id)
+        task = dao.get_task(db, task_id)
+        
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+        
+        # Use project's default engine if not specified
+        if not engine_name:
+            engine_name = project.default_engine
+        
+        # Create run record
+        run = dao.create_run(
+            db=db,
+            project_id=project_id,
+            phase=PhaseType.ARCHITECT,
+            engine=engine_name,
+            status=RunStatus.RUNNING
+        )
+        
+        run_logger = RunLogger(run_id=run.id)
+        run_logger.info(f"Starting architect phase for task '{task.title}'")
+        
+        try:
+            # Create engine instance
+            engine = EngineFactory.create(
+                engine_name,
+                working_directory=project.root_path
+            )
+            
+            # Check engine health
+            if not await engine.health_check():
+                raise RuntimeError(f"Engine {engine_name} is not available")
+            
+            # Start engine session
+            session_result = await engine.start_session(
+                context={
+                    "working_directory": project.root_path,
+                    "task": task.title,
+                    "task_description": task.description
+                }
+            )
+            
+            if not session_result.success:
+                raise RuntimeError(f"Failed to start engine session: {session_result.error}")
+            
+            run_logger.info("Engine session started, executing architect")
+            
+            # Read architect prompt template
+            architect_prompt_path = Path(__file__).parent.parent.parent.parent / "PROMPTS" / "architect.md"
+            if architect_prompt_path.exists():
+                with open(architect_prompt_path, 'r') as f:
+                    architect_template = f.read()
+                
+                # Build full prompt
+                full_prompt = f"""{architect_template}
+
+## Task
+{task.title}
+
+{task.description or ''}
+
+## Architecture Context
+{context_content}
+
+Please analyze this and produce:
+1. architecture.json with 2-3 architecture options
+2. ADR (Architecture Decision Record) markdown files for key decisions
+
+Output the architecture.json in a JSON code block."""
+            else:
+                full_prompt = f"""Design architecture options for this task:
+
+Task: {task.title}
+Description: {task.description or ''}
+
+Context:
+{context_content}
+
+Provide 2-3 architecture options with trade-offs."""
+            
+            # Execute with engine
+            result = await engine.execute(full_prompt)
+            
+            if not result.success:
+                raise RuntimeError(f"Architect execution failed: {result.error}")
+            
+            run_logger.info("Architect completed, parsing results")
+            
+            # Parse architecture from response
+            arch_data = self._parse_architecture_from_response(result.content)
+            
+            # Save architecture.json as artifact
+            arch_artifact = self._save_architecture_artifact(
+                db=db,
+                project_id=project_id,
+                task_id=task_id,
+                run_id=run.id,
+                arch_data=arch_data
+            )
+            
+            # Extract and save ADR documents
+            adr_artifacts = self._extract_and_save_adrs(
+                db=db,
+                project_id=project_id,
+                task_id=task_id,
+                run_id=run.id,
+                response_content=result.content
+            )
+            
+            # Save transcript
+            transcript = await engine.get_transcript()
+            transcript_artifact = self._save_transcript_artifact(
+                db=db,
+                project_id=project_id,
+                run_id=run.id,
+                transcript=transcript,
+                phase="architect"
+            )
+            
+            # Stop engine session
+            await engine.stop_session()
+            
+            # Update task phase
+            dao.update_task(db, task_id, current_phase=PhaseType.ARCHITECT)
+            
+            # Update run status
+            dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
+            
+            run_logger.info(f"Architect phase completed successfully")
+            
+            # Emit completion event
+            event = Event(
+                event_type=EventType.RUN_COMPLETED,
+                project_id=project_id,
+                task_id=task_id,
+                data={
+                    "run_id": run.id,
+                    "phase": PhaseType.ARCHITECT.value,
+                    "arch_artifact_id": arch_artifact.id,
+                    "adr_count": len(adr_artifacts)
+                }
+            )
+            event_bus.publish(event)
+            
+            return {
+                "success": True,
+                "run_id": run.id,
+                "arch_artifact_id": arch_artifact.id,
+                "transcript_artifact_id": transcript_artifact.id,
+                "adr_artifacts": [a.id for a in adr_artifacts]
+            }
+            
+        except Exception as e:
+            run_logger.error(f"Architect phase failed: {str(e)}")
+            dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
+            
+            # Emit failure event
+            event = Event(
+                event_type=EventType.RUN_FAILED,
+                project_id=project_id,
+                task_id=task_id,
+                data={
+                    "run_id": run.id,
+                    "phase": PhaseType.ARCHITECT.value,
+                    "error": str(e)
+                }
+            )
+            event_bus.publish(event)
+            
+            return {
+                "success": False,
+                "run_id": run.id,
+                "error": str(e)
+            }
+    
+    def _parse_architecture_from_response(self, response_content: str) -> Dict[str, Any]:
+        """
+        Parse architecture.json from engine response.
+        Looks for JSON code blocks or tries to parse the entire response.
+        """
+        # Try to find JSON code block
+        if "```json" in response_content:
+            start = response_content.find("```json") + 7
+            end = response_content.find("```", start)
+            json_str = response_content[start:end].strip()
+        elif "```" in response_content:
+            # Try any code block
+            start = response_content.find("```") + 3
+            end = response_content.find("```", start)
+            json_str = response_content[start:end].strip()
+        else:
+            # Try the whole content
+            json_str = response_content.strip()
+        
+        try:
+            arch_data = json.loads(json_str)
+            return arch_data
+        except json.JSONDecodeError:
+            # Fallback: create basic structure
+            return {
+                "options": [],
+                "metadata": {
+                    "generated_at": datetime.now().isoformat(),
+                    "note": "Failed to parse structured architecture, manual review needed"
+                },
+                "raw_response": response_content
+            }
+    
+    def _save_architecture_artifact(
+        self,
+        db: Session,
+        project_id: int,
+        task_id: int,
+        run_id: int,
+        arch_data: Dict[str, Any]
+    ):
+        """Save architecture.json as artifact"""
+        # Convert to JSON string
+        arch_json = json.dumps(arch_data, indent=2)
+        
+        # Create artifact using DAO
+        artifact = dao.create_artifact(
+            db=db,
+            project_id=project_id,
+            artifact_type=ArtifactType.ARCHITECTURE,
+            name="architecture.json",
+            file_path="architecture.json",
+            task_id=task_id,
+            run_id=run_id,
+            extra_data=json.dumps({"option_count": len(arch_data.get("options", []))})
+        )
+        
+        # Store file
+        import io
+        file_obj = io.BytesIO(arch_json.encode('utf-8'))
+        
+        artifact_storage.store_artifact(
+            session=db,
+            project_id=project_id,
+            task_id=task_id,
+            run_id=run_id,
+            artifact_type="architecture",
+            file_path="architecture.json",
+            file_obj=file_obj
+        )
+        
+        return artifact
+    
+    def _extract_and_save_adrs(
+        self,
+        db: Session,
+        project_id: int,
+        task_id: int,
+        run_id: int,
+        response_content: str
+    ) -> List:
+        """
+        Extract ADR (Architecture Decision Record) documents from response.
+        Looks for markdown sections or code blocks containing ADRs.
+        """
+        adr_artifacts = []
+        
+        # Look for markdown code blocks that might be ADRs
+        import re
+        
+        # Pattern for markdown code blocks
+        md_pattern = r'```markdown\n(.*?)\n```'
+        matches = re.findall(md_pattern, response_content, re.DOTALL)
+        
+        for idx, adr_content in enumerate(matches):
+            # Extract title from first line if it's a heading
+            first_line = adr_content.split('\n')[0]
+            if first_line.startswith('#'):
+                title = first_line.lstrip('#').strip()
+                filename = f"ADR_{idx+1:03d}_{title.replace(' ', '_')[:30]}.md"
+            else:
+                filename = f"ADR_{idx+1:03d}.md"
+            
+            # Create artifact
+            artifact = dao.create_artifact(
+                db=db,
+                project_id=project_id,
+                artifact_type=ArtifactType.ADR,
+                name=filename,
+                file_path=filename,
+                task_id=task_id,
+                run_id=run_id,
+                extra_data=None
+            )
+            
+            # Store file
+            import io
+            file_obj = io.BytesIO(adr_content.encode('utf-8'))
+            
+            artifact_storage.store_artifact(
+                session=db,
+                project_id=project_id,
+                task_id=task_id,
+                run_id=run_id,
+                artifact_type="adr",
+                file_path=filename,
+                file_obj=file_obj
+            )
+            
+            adr_artifacts.append(artifact)
+        
+        return adr_artifacts
 
 
 # Global instance
