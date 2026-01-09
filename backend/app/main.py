@@ -6,7 +6,7 @@ UI-first, stack-agnostic engineering control system.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import projects_router, tasks_router, change_requests_router
+from app.api import projects_router, tasks_router, change_requests_router, artifacts_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(projects_router)
 app.include_router(tasks_router)
 app.include_router(change_requests_router)
+app.include_router(artifacts_router)
 
 
 @app.get("/")
