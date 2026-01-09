@@ -20,40 +20,40 @@ help:
 
 # Build Docker images
 build:
-	docker-compose build
+	docker compose build
 
 # Start production containers
 up:
-	docker-compose up -d
+	docker compose up -d
 
 # Stop containers
 down:
-	docker-compose down
+	docker compose down
 
 # Start development containers with hot reload
 dev:
-	docker-compose -f docker-compose.dev.yml up
+	docker compose -f docker compose.dev.yml up
 
 # View logs
 logs:
-	docker-compose logs
+	docker compose logs
 
 # Follow logs
 logs-f:
-	docker-compose logs -f
+	docker compose logs -f
 
 # Run backend tests
 test:
-	docker-compose exec backend python -m pytest tests/ -v
+	docker compose exec backend python -m pytest tests/ -v
 
 # Run linters
 lint:
-	docker-compose exec backend ruff check .
+	docker compose exec backend ruff check .
 
 # Clean up everything
 clean:
-	docker-compose down -v
-	docker-compose -f docker-compose.dev.yml down -v
+	docker compose down -v
+	docker compose -f docker compose.dev.yml down -v
 	docker system prune -f
 
 # Run validation script
@@ -62,23 +62,23 @@ validate:
 
 # Backend shell
 shell-be:
-	docker-compose exec backend /bin/bash
+	docker compose exec backend /bin/bash
 
 # Frontend shell
 shell-fe:
-	docker-compose exec frontend /bin/sh
+	docker compose exec frontend /bin/sh
 
 # Restart services
 restart:
-	docker-compose restart
+	docker compose restart
 
 # View backend logs only
 logs-be:
-	docker-compose logs -f backend
+	docker compose logs -f backend
 
 # View frontend logs only
 logs-fe:
-	docker-compose logs -f frontend
+	docker compose logs -f frontend
 
 # Health check
 health:
@@ -102,11 +102,11 @@ clean:
 
 # Docker
 docker-up:
-	docker-compose up -d
+	docker compose up -d
 	@echo "✓ Services started"
 	@echo "Backend API: http://localhost:8000"
 	@echo "Frontend UI: http://localhost:5173"
 
 docker-down:
-	docker-compose down
+	docker compose down
 	@echo "✓ Services stopped"
