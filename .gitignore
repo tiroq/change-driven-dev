@@ -7,16 +7,29 @@ __pycache__/
 env/
 venv/
 ENV/
-.venv
+.venv/
 *.egg-info/
 dist/
 build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
 data/
+backend/data/
+
+# Artifacts & Storage
+artifacts/
+backend/artifacts/
+*.log
 
 # IDE
 .vscode/
@@ -24,6 +37,8 @@ data/
 *.swp
 *.swo
 *~
+*.sublime-project
+*.sublime-workspace
 
 # Node
 node_modules/
@@ -31,16 +46,31 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+.pnpm-debug.log*
 
 # Build
 frontend/build/
 frontend/dist/
+*.map
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
 
 # Environment
 .env
 .env.local
+.env.*.local
 backend/logs/*
+*.secret
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Documentation builds
+docs/_build/
+site/
