@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from typing import Optional, BinaryIO
 
-from ..db.dao import create_artifact, get_artifact, update_artifact
+from ..db.dao import create_artifact, get_artifact, delete_artifact
+from ..models.models import ArtifactType
 
 
 class ArtifactStorageService:
@@ -73,7 +74,7 @@ class ArtifactStorageService:
             sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
 
-    async def store_artifact(
+    def store_artifact(
         self,
         session,
         project_id: int,
@@ -100,63 +101,65 @@ class ArtifactStorageService:
         Returns:
             Created artifact record as dict
         """
-        # Create database record first to get artifact ID
-        artifact_data = {
-            "project_id": project_id,
-            "task_id": task_id,
-            "run_id": run_id,
-            "artifact_type": artifact_type,
-            "file_path": file_path,
-            "extra_data": extra_data or {}
-        }
+        # Compute hash first
+        file_obj.seek(0)
+        sha256_hash = self.compute_sha256(file_obj)
         
-        artifact = await create_artifact(session, artifact_data)
+        # Get filename for storage
+        filename = Path(file_path).name
+        
+        # Create initial artifact record with placeholder ID
+        # We'll use a temporary approach: create with file_path, then update storage_path
+        temp_artifact = create_artifact(
+            db=session,
+            project_id=project_id,
+            artifact_type=ArtifactType(artifact_type),
+            name=filename,
+            file_path=file_path,
+            task_id=task_id,
+            run_id=run_id,
+            sha256=sha256_hash,
+            extra_data=str(extra_data or {})
+        )
         
         try:
-            # Compute hash while reading file
-            file_obj.seek(0)  # Reset to beginning
-            sha256_hash = self.compute_sha256(file_obj)
-            
-            # Store file
-            file_obj.seek(0)  # Reset again for writing
-            storage_path = self.get_artifact_path(project_id, artifact.id, Path(file_path).name)
+            # Store file using the artifact ID
+            file_obj.seek(0)
+            storage_path = self.get_artifact_path(project_id, temp_artifact.id, filename)
             
             with open(storage_path, 'wb') as f:
-                # Write in chunks
                 for chunk in iter(lambda: file_obj.read(4096), b""):
                     f.write(chunk)
             
             file_size = storage_path.stat().st_size
             
-            # Update artifact record with file info
-            update_data = {
-                "sha256": sha256_hash,
-                "file_size": file_size,
-                "storage_path": str(storage_path)
-            }
-            
-            artifact = await update_artifact(session, artifact.id, update_data)
+            # Update the artifact record with storage info
+            # Direct update since no update_artifact function exists
+            temp_artifact.storage_path = str(storage_path)
+            temp_artifact.file_size = file_size
+            session.commit()
+            session.refresh(temp_artifact)
             
             return {
-                "id": artifact.id,
-                "project_id": artifact.project_id,
-                "task_id": artifact.task_id,
-                "run_id": artifact.run_id,
-                "artifact_type": artifact.artifact_type,
-                "file_path": artifact.file_path,
-                "storage_path": artifact.storage_path,
-                "sha256": artifact.sha256,
-                "file_size": artifact.file_size,
-                "extra_data": artifact.extra_data,
-                "created_at": artifact.created_at.isoformat()
+                "id": temp_artifact.id,
+                "project_id": temp_artifact.project_id,
+                "task_id": temp_artifact.task_id,
+                "run_id": temp_artifact.run_id,
+                "artifact_type": temp_artifact.artifact_type.value,
+                "file_path": temp_artifact.file_path,
+                "storage_path": temp_artifact.storage_path,
+                "sha256": temp_artifact.sha256,
+                "file_size": temp_artifact.file_size,
+                "extra_data": temp_artifact.extra_data,
+                "created_at": temp_artifact.created_at.isoformat()
             }
             
         except Exception as e:
             # Clean up artifact record if file storage fails
-            # Note: In production, consider more sophisticated error handling
+            delete_artifact(session, temp_artifact.id)
             raise RuntimeError(f"Failed to store artifact file: {str(e)}") from e
 
-    async def retrieve_artifact(self, session, artifact_id: int) -> tuple[dict, Path]:
+    def retrieve_artifact(self, session, artifact_id: int) -> tuple[dict, Path]:
         """
         Retrieve artifact metadata and file path.
         
@@ -170,7 +173,7 @@ class ArtifactStorageService:
         Raises:
             FileNotFoundError: If artifact file doesn't exist
         """
-        artifact = await get_artifact(session, artifact_id)
+        artifact = get_artifact(session, artifact_id)
         if not artifact:
             raise ValueError(f"Artifact {artifact_id} not found")
         
@@ -186,7 +189,7 @@ class ArtifactStorageService:
             "project_id": artifact.project_id,
             "task_id": artifact.task_id,
             "run_id": artifact.run_id,
-            "artifact_type": artifact.artifact_type,
+            "artifact_type": artifact.artifact_type.value,
             "file_path": artifact.file_path,
             "storage_path": artifact.storage_path,
             "sha256": artifact.sha256,

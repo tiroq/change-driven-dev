@@ -112,7 +112,7 @@ async def upload_artifact(
     """Upload an artifact file"""
     try:
         # Store artifact using storage service
-        artifact_dict = await artifact_storage.store_artifact(
+        artifact_dict = artifact_storage.store_artifact(
             session=db,
             project_id=project_id,
             task_id=task_id,
@@ -156,7 +156,7 @@ async def get_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_
 async def download_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
     """Download an artifact file"""
     try:
-        artifact_dict, file_path = await artifact_storage.retrieve_artifact(db, artifact_id)
+        artifact_dict, file_path = artifact_storage.retrieve_artifact(db, artifact_id)
         
         # Verify file integrity
         if artifact_dict.get("sha256"):
