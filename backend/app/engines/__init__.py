@@ -8,11 +8,13 @@ from .engine_base import (
     EngineResponse,
     EngineFactory
 )
+from .copilot_cli import CopilotCLIEngine
 
 __all__ = [
     "EngineBase",
     "EngineStatus",
     "EngineMessage",
     "EngineResponse",
-    "EngineFactory"
+    "EngineFactory",
+    "CopilotCLIEngine"
 ]
