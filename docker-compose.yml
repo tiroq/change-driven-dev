@@ -1,30 +1,69 @@
-# Docker Compose for Change-Driven Development
-# Note: This is a basic setup for local development
+version: '3.8'
 
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: cdd-backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
+      - ./backend/data:/app/data
+      - ./backend/artifacts:/app/artifacts
+      - ./backend/logs:/app/logs
       - ./backend:/app
-      - ./data:/app/data
     environment:
-      - PYTHONUNBUFFERED=1
+      - BACKEND_HOST=${BACKEND_HOST:-0.0.0.0}
+      - BACKEND_PORT=8000
+      - BACKEND_RELOAD=${BACKEND_RELOAD:-true}
+      - BACKEND_LOG_LEVEL=${BACKEND_LOG_LEVEL:-info}
+      - DATA_DIR=${DATA_DIR:-/app/data}
+      - ARTIFACTS_DIR=${ARTIFACTS_DIR:-/app/artifacts}
+      - APP_ENV=${APP_ENV:-development}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_DIR=${LOG_DIR:-/app/logs}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - cdd-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: cdd-frontend
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "${FRONTEND_PORT:-5173}:80"
     environment:
-      - NODE_ENV=development
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000/ws}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - cdd-network
+
+networks:
+  cdd-network:
+    driver: bridge
+
+volumes:
+  backend-data:
+  backend-artifacts:
+  backend-logs:

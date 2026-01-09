@@ -1,53 +1,93 @@
-.PHONY: help dev test lint fmt clean install docker-up docker-down
+.PHONY: help build up down dev logs test lint clean validate shell-be shell-fe health
 
 help:
-	@echo "Change-Driven Development - Development Commands"
+	@echo "Change-Driven Development - Available Commands:"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  make dev         - Run backend and frontend in development mode"
-	@echo "  make install     - Install all dependencies (backend + frontend)"
-	@echo "  make test        - Run all tests"
-	@echo "  make lint        - Run linters on backend and frontend"
-	@echo "  make fmt         - Format code (backend + frontend)"
-	@echo "  make clean       - Remove build artifacts and cache files"
-	@echo "  make docker-up   - Start services with docker-compose"
-	@echo "  make docker-down - Stop docker-compose services"
+	@echo "  make build       - Build all Docker images"
+	@echo "  make up          - Start production containers"
+	@echo "  make down        - Stop all containers"
+	@echo "  make dev         - Start development containers with hot reload"
+	@echo "  make logs        - Show container logs"
+	@echo "  make logs-f      - Follow container logs"
+	@echo "  make test        - Run backend tests"
+	@echo "  make lint        - Run linters"
+	@echo "  make clean       - Remove containers, volumes, and images"
+	@echo "  make validate    - Run system validation"
+	@echo "  make shell-be    - Open shell in backend container"
+	@echo "  make shell-fe    - Open shell in frontend container"
+	@echo "  make health      - Check service health"
 	@echo ""
 
-# Development
+# Build Docker images
+build:
+	docker-compose build
+
+# Start production containers
+up:
+	docker-compose up -d
+
+# Stop containers
+down:
+	docker-compose down
+
+# Start development containers with hot reload
 dev:
-	@echo "Starting development servers..."
-	@echo "Backend will run on http://localhost:8000"
-	@echo "Frontend will run on http://localhost:5173"
-	@./scripts/dev.sh
+	docker-compose -f docker-compose.dev.yml up
 
-# Installation
-install:
-	@echo "Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
-	@echo "Installing frontend dependencies..."
-	cd frontend && npm install
-	@echo "✓ All dependencies installed"
+# View logs
+logs:
+	docker-compose logs
 
-# Testing
+# Follow logs
+logs-f:
+	docker-compose logs -f
+
+# Run backend tests
 test:
-	@echo "Running backend tests..."
-	cd backend && python -m pytest tests/ -v
-	@echo "Running frontend tests..."
-	cd frontend && npm test
+	docker-compose exec backend python -m pytest tests/ -v
 
-# Linting
+# Run linters
 lint:
-	@echo "Linting backend (ruff)..."
-	cd backend && ruff check app/
-	@echo "Linting frontend (eslint)..."
-	cd frontend && npm run lint
+	docker-compose exec backend ruff check .
 
-# Formatting
-fmt:
-	@echo "Formatting backend code..."
-	cd backend && ruff format app/
-	@echo "Formatting frontend code..."
+# Clean up everything
+clean:
+	docker-compose down -v
+	docker-compose -f docker-compose.dev.yml down -v
+	docker system prune -f
+
+# Run validation script
+validate:
+	./validate.sh
+
+# Backend shell
+shell-be:
+	docker-compose exec backend /bin/bash
+
+# Frontend shell
+shell-fe:
+	docker-compose exec frontend /bin/sh
+
+# Restart services
+restart:
+	docker-compose restart
+
+# View backend logs only
+logs-be:
+	docker-compose logs -f backend
+
+# View frontend logs only
+logs-fe:
+	docker-compose logs -f frontend
+
+# Health check
+health:
+	@echo "Checking backend health..."
+	@curl -f http://localhost:8000/health || echo "Backend not responding"
+	@echo ""
+	@echo "Checking frontend health..."
+	@curl -f http://localhost:5173 || echo "Frontend not responding"
+
 	cd frontend && npm run format
 
 # Cleanup
