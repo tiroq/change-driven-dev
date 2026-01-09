@@ -178,7 +178,7 @@ async def download_artifact(artifact_id: int, db: Session = Depends(lambda: next
 async def get_artifact_content(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
     """Get artifact content (text files only)"""
     try:
-        artifact_dict, file_path = await artifact_storage.retrieve_artifact(db, artifact_id)
+        artifact_dict, file_path = artifact_storage.retrieve_artifact(db, artifact_id)
         
         # Check file size (limit to 1MB for text content)
         if artifact_dict["file_size"] > 1024 * 1024:
