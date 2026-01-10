@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 
 from sqlalchemy.orm import Session
 
-from ..db import dao
+from ..db import dao, get_db
 from ..engines import EngineFactory, EngineResponse
 from ..models.models import TaskStatus, PhaseType, ArtifactType, RunStatus
 from ..core.events import event_bus, EventType, Event
@@ -34,7 +34,7 @@ class OrchestrationService:
         Execute planner phase to generate task breakdown.
         
         Args:
-            db: Database session
+            db: Database session (project-specific)
             project_id: ID of the project
             spec_content: Project specification content
             engine_name: Optional engine override (defaults to project's default_engine)
@@ -42,8 +42,12 @@ class OrchestrationService:
         Returns:
             Dict containing run results and created artifacts
         """
-        # Get project
-        project = dao.get_project(db, project_id)
+        # Get project from main database (not project-specific db)
+        main_db = next(get_db(1))  # Main database has ID=1
+        try:
+            project = dao.get_project(main_db, project_id)
+        finally:
+            main_db.close()
         
         # Use project's default engine if not specified
         if not engine_name:
@@ -383,8 +387,14 @@ class OrchestrationService:
         Returns:
             Dict containing run results and created artifacts
         """
-        # Get project and task
-        project = dao.get_project(db, project_id)
+        # Get project from main database
+        main_db = next(get_db(1))
+        try:
+            project = dao.get_project(main_db, project_id)
+        finally:
+            main_db.close()
+        
+        # Get task from project-specific database
         task = dao.get_task(db, task_id)
         
         if not task:
@@ -724,8 +734,14 @@ Provide 2-3 architecture options with trade-offs."""
         from ..core.config import ProjectConfig
         from ..services.git_service import GitService
         
-        # Get project and task
-        project = dao.get_project(db, project_id)
+        # Get project from main database
+        main_db = next(get_db(1))
+        try:
+            project = dao.get_project(main_db, project_id)
+        finally:
+            main_db.close()
+        
+        # Get task from project-specific database
         task = dao.get_task(db, task_id)
         
         if not task:
