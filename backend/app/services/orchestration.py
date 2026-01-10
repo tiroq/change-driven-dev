@@ -180,8 +180,8 @@ class OrchestrationService:
             
         except Exception as e:
             run_logger.error(f"Planner phase failed: {str(e)}")
-            dao.update_run(db, run.id, status=RunStatus.FAILED)
-            dao.update_task(db, planning_task.id, status=TaskStatus.FAILED)
+            dao.update_run(db, run.id, status=RunStatus.FAILURE)
+            dao.update_task(db, planning_task.id, status=TaskStatus.REJECTED)
             
             # Emit failure event
             event = Event(
@@ -560,7 +560,7 @@ Provide 2-3 architecture options with trade-offs."""
             
         except Exception as e:
             run_logger.error(f"Architect phase failed: {str(e)}")
-            dao.update_run(db, run.id, status=RunStatus.FAILED)
+            dao.update_run(db, run.id, status=RunStatus.FAILURE)
             
             # Emit failure event
             event = Event(
@@ -937,7 +937,7 @@ Implement the changes needed to complete this task."""
                 dao.update_run(
                     db,
                     run.id,
-                    status=RunStatus.FAILED
+                    status=RunStatus.FAILURE
                 )
                 
                 run_logger.info("Coder phase completed with gate failures")
@@ -968,7 +968,7 @@ Implement the changes needed to complete this task."""
             
         except Exception as e:
             run_logger.error(f"Coder phase failed: {str(e)}")
-            dao.update_run(db, run.id, status=RunStatus.FAILED)
+            dao.update_run(db, run.id, status=RunStatus.FAILURE)
             
             # Emit failure event
             event = Event(
