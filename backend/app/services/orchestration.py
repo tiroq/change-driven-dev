@@ -57,7 +57,7 @@ class OrchestrationService:
         run = dao.create_run(
             db=db,
             project_id=project_id,
-            phase=PhaseType.PLAN,
+            phase=PhaseType.PLANNERNER,
             engine=engine_name,
             status=RunStatus.RUNNING
         )
@@ -151,7 +151,7 @@ class OrchestrationService:
                 project_id=project_id,
                 data={
                     "run_id": run.id,
-                    "phase": PhaseType.PLAN.value,
+                    "phase": PhaseType.PLANNER.value,
                     "tasks_created": len(created_tasks),
                     "plan_artifact_id": plan_artifact.id
                 }
@@ -177,7 +177,7 @@ class OrchestrationService:
                 project_id=project_id,
                 data={
                     "run_id": run.id,
-                    "phase": PhaseType.PLAN.value,
+                    "phase": PhaseType.PLANNER.value,
                     "error": str(e)
                 }
             )
@@ -345,7 +345,7 @@ class OrchestrationService:
                 title=title,
                 description=description,
                 priority=priority,
-                current_phase=PhaseType.PLAN,
+                current_phase=PhaseType.PLANNER,
                 status=TaskStatus.PENDING  # Start as PENDING, will require approval
             )
             
