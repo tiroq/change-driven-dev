@@ -35,24 +35,35 @@ class CoderRequest(BaseModel):
 
 
 @router.post("/plan")
-async def run_planner(request: PlanRequest, db: Session = Depends(lambda: next(get_db(request.project_id)))):
+async def run_planner(request: PlanRequest):
     """
     Execute planner phase for a project.
     
     Creates task breakdown from specification and produces plan.json artifact.
     """
     try:
-        result = await orchestration_service.run_planner_phase(
-            db=db,
-            project_id=request.project_id,
-            spec_content=request.spec_content,
-            engine_name=request.engine_name
-        )
+        # Get database session for this project
+        db_gen = get_db_for_project(request.project_id)
+        db = next(db_gen)
         
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Planner phase failed"))
-        
-        return result
+        try:
+            result = await orchestration_service.run_planner_phase(
+                db=db,
+                project_id=request.project_id,
+                spec_content=request.spec_content,
+                engine_name=request.engine_name
+            )
+            
+            if not result["success"]:
+                raise HTTPException(status_code=500, detail=result.get("error", "Planner phase failed"))
+            
+            return result
+        finally:
+            # Close the database session
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
         
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
