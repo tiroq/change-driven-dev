@@ -64,3 +64,8 @@ db_manager = DatabaseManager()
 def get_db(project_id: int = 1) -> Generator[Session, None, None]:
     """Dependency for getting database session"""
     return db_manager.get_session(project_id)
+
+
+def get_db_for_project(project_id: int) -> Generator[Session, None, None]:
+    """Get database session for a specific project ID"""
+    yield from db_manager.get_session(project_id)
