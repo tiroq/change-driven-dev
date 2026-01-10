@@ -151,8 +151,8 @@ class OrchestrationService:
             await engine.stop_session()
             
             # Update run status and planning task status
-            dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
-            dao.update_task(db, planning_task.id, {"status": TaskStatus.COMPLETED})
+            dao.update_run(db, run.id, status=RunStatus.SUCCESS)
+            dao.update_task(db, planning_task.id, status=TaskStatus.COMPLETED)
             
             run_logger.info(f"Planner phase completed successfully. Created {len(created_tasks)} tasks")
             
@@ -180,8 +180,8 @@ class OrchestrationService:
             
         except Exception as e:
             run_logger.error(f"Planner phase failed: {str(e)}")
-            dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
-            dao.update_task(db, planning_task.id, {"status": TaskStatus.FAILED})
+            dao.update_run(db, run.id, status=RunStatus.FAILED)
+            dao.update_task(db, planning_task.id, status=TaskStatus.FAILED)
             
             # Emit failure event
             event = Event(
@@ -532,7 +532,7 @@ Provide 2-3 architecture options with trade-offs."""
             dao.update_task(db, task_id, current_phase=PhaseType.ARCHITECT)
             
             # Update run status
-            dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
+            dao.update_run(db, run.id, status=RunStatus.SUCCESS)
             
             run_logger.info(f"Architect phase completed successfully")
             
@@ -560,7 +560,7 @@ Provide 2-3 architecture options with trade-offs."""
             
         except Exception as e:
             run_logger.error(f"Architect phase failed: {str(e)}")
-            dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
+            dao.update_run(db, run.id, status=RunStatus.FAILED)
             
             # Emit failure event
             event = Event(
@@ -901,7 +901,7 @@ Implement the changes needed to complete this task."""
                 )
                 
                 # Update run status
-                dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
+                dao.update_run(db, run.id, status=RunStatus.SUCCESS)
                 
                 run_logger.info("Coder phase completed successfully")
                 
@@ -971,7 +971,7 @@ Implement the changes needed to complete this task."""
             
         except Exception as e:
             run_logger.error(f"Coder phase failed: {str(e)}")
-            dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
+            dao.update_run(db, run.id, status=RunStatus.FAILED)
             
             # Emit failure event
             event = Event(
