@@ -70,7 +70,9 @@ class OrchestrationService:
             engine=engine_name
         )
         
-        run_logger = RunLogger(run_id=run.id)
+        # Create log path for this run
+        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=planning_task.id)
         run_logger.info(f"Starting planner phase for project {project.name}")
         
         try:
@@ -421,7 +423,9 @@ class OrchestrationService:
             engine=engine_name
         )
         
-        run_logger = RunLogger(run_id=run.id)
+        # Create log path for this run
+        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=task_id)
         run_logger.info(f"Starting architect phase for task '{task.title}'")
         
         try:
@@ -773,7 +777,9 @@ Provide 2-3 architecture options with trade-offs."""
             engine=engine_name
         )
         
-        run_logger = RunLogger(run_id=run.id)
+        # Create log path for this run
+        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=task_id)
         run_logger.info(f"Starting coder phase for task '{task.title}'")
         
         try:
