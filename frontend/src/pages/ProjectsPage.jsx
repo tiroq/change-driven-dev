@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
-function ProjectsPage() {
+function ProjectsPage({ onProjectSelect }) {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -117,6 +117,10 @@ function ProjectsPage() {
   }
 
   const handleViewProject = (projectId) => {
+    // Set the selected project
+    if (onProjectSelect) {
+      onProjectSelect(projectId)
+    }
     navigate(`/tasks?project_id=${projectId}`)
   }
 
