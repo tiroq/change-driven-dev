@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 
-from app.db import get_db
+from app.db import get_db_for_project
 from app.services.orchestration import orchestration_service
 
 router = APIRouter(prefix="/api/phase", tags=["phase"])
