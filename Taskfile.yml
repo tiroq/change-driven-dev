@@ -1,0 +1,143 @@
+version: '3'
+
+vars:
+  PYTHON: python3
+  VENV_DIR: .venv
+  BACKEND_DIR: backend
+  FRONTEND_DIR: frontend
+  BACKEND_PORT: 8000
+  FRONTEND_PORT: 5173
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # Setup tasks
+  setup:
+    desc: Complete setup for local development (backend + frontend)
+    cmds:
+      - task: setup-backend
+      - task: setup-frontend
+
+  setup-backend:
+    desc: Set up Python virtual environment and install backend dependencies
+    dir: "{{.BACKEND_DIR}}"
+    cmds:
+      - "{{.PYTHON}} -m venv ../{{.VENV_DIR}}"
+      - "../{{.VENV_DIR}}/bin/pip install --upgrade pip"
+      - "../{{.VENV_DIR}}/bin/pip install -e ."
+      - echo "Backend setup complete. Virtual environment created at {{.VENV_DIR}}"
+    status:
+      - test -d ../{{.VENV_DIR}}
+
+  setup-frontend:
+    desc: Install frontend dependencies
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm install
+      - echo "Frontend setup complete"
+    status:
+      - test -d node_modules
+
+  # Run tasks
+  dev:
+    desc: Run both backend and frontend in development mode
+    deps: [setup]
+    cmds:
+      - task: backend & task: frontend
+
+  backend:
+    desc: Run backend development server
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - echo "Starting backend on http://localhost:{{.BACKEND_PORT}}"
+      - "../{{.VENV_DIR}}/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port {{.BACKEND_PORT}}"
+
+  frontend:
+    desc: Run frontend development server
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - echo "Starting frontend on http://localhost:{{.FRONTEND_PORT}}"
+      - npm run dev
+
+  # Database tasks
+  db-init:
+    desc: Initialize the main database
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - echo "Initializing database..."
+      - "../{{.VENV_DIR}}/bin/python -c 'from app.db.database import db_manager; db_manager.init_db()'"
+
+  # Utility tasks
+  clean:
+    desc: Clean up generated files and caches
+    cmds:
+      - rm -rf {{.VENV_DIR}}
+      - rm -rf {{.BACKEND_DIR}}/__pycache__
+      - rm -rf {{.BACKEND_DIR}}/app/__pycache__
+      - find {{.BACKEND_DIR}} -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+      - find {{.BACKEND_DIR}} -type f -name "*.pyc" -delete
+      - rm -rf {{.FRONTEND_DIR}}/node_modules
+      - rm -rf {{.FRONTEND_DIR}}/dist
+      - echo "Cleaned up build artifacts and dependencies"
+
+  clean-db:
+    desc: Remove all database files (WARNING: deletes all data)
+    prompt: This will delete all database files. Are you sure?
+    cmds:
+      - rm -f {{.BACKEND_DIR}}/data/*.db
+      - echo "Database files removed"
+
+  test-backend:
+    desc: Run backend tests
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - "../{{.VENV_DIR}}/bin/pytest"
+
+  lint-backend:
+    desc: Run backend linter
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - "../{{.VENV_DIR}}/bin/ruff check ."
+
+  format-backend:
+    desc: Format backend code
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - "../{{.VENV_DIR}}/bin/ruff format ."
+
+  # Health check tasks
+  health:
+    desc: Check if backend is running
+    cmds:
+      - curl -s http://localhost:{{.BACKEND_PORT}}/health | python3 -m json.tool || echo "Backend not running"
+
+  # Install github-copilot-cli
+  install-copilot-cli:
+    desc: Install GitHub Copilot CLI (requires npm)
+    cmds:
+      - npm install -g @githubnext/github-copilot-cli
+      - echo "GitHub Copilot CLI installed. Run 'github-copilot-cli auth' to authenticate"
+
+  # Quick start
+  start:
+    desc: Quick start - setup and run everything
+    cmds:
+      - task: setup
+      - echo ""
+      - echo "=========================================="
+      - echo "Starting Change-Driven Development System"
+      - echo "=========================================="
+      - echo ""
+      - echo "Backend will run on: http://localhost:{{.BACKEND_PORT}}"
+      - echo "Frontend will run on: http://localhost:{{.FRONTEND_PORT}}"
+      - echo ""
+      - task: dev
