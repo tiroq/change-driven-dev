@@ -57,7 +57,7 @@ class OrchestrationService:
         run = dao.create_run(
             db=db,
             project_id=project_id,
-            phase=PhaseType.PLANNERNER,
+            phase=PhaseType.PLANNER,
             engine=engine_name,
             status=RunStatus.RUNNING
         )
