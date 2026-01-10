@@ -937,10 +937,7 @@ Implement the changes needed to complete this task."""
                 dao.update_run(
                     db,
                     run.id,
-                    {
-                        "status": RunStatus.FAILED,
-                        "error": f"Gates failed: {gate_results['summary']}"
-                    }
+                    status=RunStatus.FAILED
                 )
                 
                 run_logger.info("Coder phase completed with gate failures")
