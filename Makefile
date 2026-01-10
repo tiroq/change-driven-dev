@@ -32,7 +32,7 @@ down:
 
 # Start development containers with hot reload
 dev:
-	docker compose -f docker compose.dev.yml up
+	docker compose -f docker-compose.dev.yml up
 
 # View logs
 logs:
@@ -53,7 +53,7 @@ lint:
 # Clean up everything
 clean:
 	docker compose down -v
-	docker compose -f docker compose.dev.yml down -v
+	docker compose -f docker-compose.dev.yml down -v
 	docker system prune -f
 
 # Run validation script
