@@ -38,7 +38,14 @@ function PlannerPage() {
   }
 
   const handleRunPlanner = async () => {
-    if (!projectId || !specContent.trim()) {
+    console.log('Run Planner clicked:', { projectId, specContent, specContentLength: specContent?.length })
+    
+    if (!projectId) {
+      setError('No project selected')
+      return
+    }
+    
+    if (!specContent || !specContent.trim()) {
       setError('Please enter project specification')
       return
     }
@@ -47,7 +54,9 @@ function PlannerPage() {
       setRunning(true)
       setError(null)
       
+      console.log('Calling runPlanner API...')
       const result = await api.runPlanner(projectId, specContent)
+      console.log('Planner result:', result)
       setRunResult(result)
       
       if (result.success) {
@@ -57,6 +66,7 @@ function PlannerPage() {
         setError(result.error || 'Planner failed')
       }
     } catch (err) {
+      console.error('Planner error:', err)
       setError('Failed to run planner: ' + err.message)
     } finally {
       setRunning(false)
@@ -71,7 +81,28 @@ function PlannerPage() {
       </div>
     )
   }
-
+  if (!projectId) {
+    return (
+      <div className="page">
+        <h2>Planner</h2>
+        <div style={{
+          padding: '2rem',
+          backgroundColor: '#fff3cd',
+          borderRadius: '8px',
+          border: '1px solid #ffc107',
+          marginTop: '1rem'
+        }}>
+          <h3 style={{ color: '#856404', marginTop: 0 }}>⚠️ No Project Selected</h3>
+          <p style={{ color: '#856404' }}>
+            Please select a project from the <a href="/">Projects page</a> first, or access this page with a project_id parameter.
+          </p>
+          <p style={{ color: '#856404', fontSize: '0.9rem', marginBottom: 0 }}>
+            Example: <code>http://192.168.1.200:5173/planner?project_id=2</code>
+          </p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
