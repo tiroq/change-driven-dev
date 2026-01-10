@@ -53,13 +53,21 @@ class OrchestrationService:
         if not engine_name:
             engine_name = project.default_engine
         
-        # Create run record
-        run = dao.create_run(
+        # Create a "planning" task to track this planner execution
+        planning_task = dao.create_task(
             db=db,
             project_id=project_id,
-            phase=PhaseType.PLANNER,
-            engine=engine_name,
-            status=RunStatus.RUNNING
+            title="Project Planning",
+            description=f"Generate development plan from specification",
+            current_phase=PhaseType.PLANNER,
+            status=TaskStatus.IN_PROGRESS
+        )
+        
+        # Create run record for the planning task
+        run = dao.create_run(
+            db=db,
+            task_id=planning_task.id,
+            engine=engine_name
         )
         
         run_logger = RunLogger(run_id=run.id)
@@ -140,8 +148,9 @@ class OrchestrationService:
             # Stop engine session
             await engine.stop_session()
             
-            # Update run status
+            # Update run status and planning task status
             dao.update_run(db, run.id, {"status": RunStatus.SUCCESS})
+            dao.update_task(db, planning_task.id, {"status": TaskStatus.COMPLETED})
             
             run_logger.info(f"Planner phase completed successfully. Created {len(created_tasks)} tasks")
             
@@ -170,6 +179,7 @@ class OrchestrationService:
         except Exception as e:
             run_logger.error(f"Planner phase failed: {str(e)}")
             dao.update_run(db, run.id, {"status": RunStatus.FAILED, "error": str(e)})
+            dao.update_task(db, planning_task.id, {"status": TaskStatus.FAILED})
             
             # Emit failure event
             event = Event(
@@ -404,13 +414,11 @@ class OrchestrationService:
         if not engine_name:
             engine_name = project.default_engine
         
-        # Create run record
+        # Create run record for this task
         run = dao.create_run(
             db=db,
-            project_id=project_id,
-            phase=PhaseType.ARCHITECT,
-            engine=engine_name,
-            status=RunStatus.RUNNING
+            task_id=task_id,
+            engine=engine_name
         )
         
         run_logger = RunLogger(run_id=run.id)
@@ -758,13 +766,11 @@ Provide 2-3 architecture options with trade-offs."""
         if not engine_name:
             engine_name = project.default_engine
         
-        # Create run record
+        # Create run record for this task
         run = dao.create_run(
             db=db,
-            project_id=project_id,
-            phase=PhaseType.CODER,
-            engine=engine_name,
-            status=RunStatus.RUNNING
+            task_id=task_id,
+            engine=engine_name
         )
         
         run_logger = RunLogger(run_id=run.id)
