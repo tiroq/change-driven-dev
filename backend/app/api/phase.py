@@ -72,25 +72,34 @@ async def run_planner(request: PlanRequest):
 
 
 @router.post("/architect")
-async def run_architect(request: ArchitectRequest, db: Session = Depends(lambda: next(get_db(request.project_id)))):
+async def run_architect(request: ArchitectRequest):
     """
     Execute architect phase for a task.
     
     Generates architecture options and ADR documents from architecture context.
     """
     try:
-        result = await orchestration_service.run_architect_phase(
-            db=db,
-            project_id=request.project_id,
-            task_id=request.task_id,
-            context_content=request.context_content,
-            engine_name=request.engine_name
-        )
+        db_gen = get_db_for_project(request.project_id)
+        db = next(db_gen)
         
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Architect phase failed"))
-        
-        return result
+        try:
+            result = await orchestration_service.run_architect_phase(
+                db=db,
+                project_id=request.project_id,
+                task_id=request.task_id,
+                context_content=request.context_content,
+                engine_name=request.engine_name
+            )
+            
+            if not result["success"]:
+                raise HTTPException(status_code=500, detail=result.get("error", "Architect phase failed"))
+            
+            return result
+        finally:
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
         
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -99,7 +108,7 @@ async def run_architect(request: ArchitectRequest, db: Session = Depends(lambda:
 
 
 @router.post("/coder")
-async def run_coder(request: CoderRequest, db: Session = Depends(lambda: next(get_db(request.project_id)))):
+async def run_coder(request: CoderRequest):
     """
     Execute coder phase for a task.
     
@@ -107,20 +116,29 @@ async def run_coder(request: CoderRequest, db: Session = Depends(lambda: next(ge
     Task must be in APPROVED status before execution.
     """
     try:
-        result = await orchestration_service.run_coder_phase(
-            db=db,
-            project_id=request.project_id,
-            task_id=request.task_id,
-            engine_name=request.engine_name
-        )
+        db_gen = get_db_for_project(request.project_id)
+        db = next(db_gen)
         
-        # Coder phase can "succeed" with gate failures, so check gates_passed
-        if not result.get("gates_passed", False) and result.get("success", False) is False:
-            # Only raise error if there was an actual execution error
-            if "error" in result and "Gates failed" not in result["error"]:
-                raise HTTPException(status_code=500, detail=result.get("error", "Coder phase failed"))
-        
-        return result
+        try:
+            result = await orchestration_service.run_coder_phase(
+                db=db,
+                project_id=request.project_id,
+                task_id=request.task_id,
+                engine_name=request.engine_name
+            )
+            
+            # Coder phase can "succeed" with gate failures, so check gates_passed
+            if not result.get("gates_passed", False) and result.get("success", False) is False:
+                # Only raise error if there was an actual execution error
+                if "error" in result and "Gates failed" not in result["error"]:
+                    raise HTTPException(status_code=500, detail=result.get("error", "Coder phase failed"))
+            
+            return result
+        finally:
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
