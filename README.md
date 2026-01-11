@@ -93,15 +93,14 @@ cd backend && pip install -r requirements.txt
 cd frontend && npm install
 ```
 
-2. **Start services**:
+2. **Start services** (using Task runner):
 ```bash
-# Backend (Terminal 1)
-cd backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Start both services in background
+task start-bg
 
-# Frontend (Terminal 2)
-cd frontend
-npm run dev
+# Or start each service separately (in separate terminals):
+task backend   # Terminal 1
+task frontend  # Terminal 2
 ```
 
 3. **Access the application**:

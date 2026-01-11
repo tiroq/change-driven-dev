@@ -3,9 +3,8 @@
 ## ✅ Completed EPICs (13 of 16)
 
 ### EPIC 0: Development Environment
-- ✅ Makefile with dev/test/lint targets
-- ✅ dev.sh, test.sh, lint.sh scripts
-- ✅ Docker Compose configuration
+- ✅ Task runner configuration (Taskfile.yml)
+- ✅ Development scripts
 - ✅ README and documentation
 
 ### EPIC 1: Database Layer

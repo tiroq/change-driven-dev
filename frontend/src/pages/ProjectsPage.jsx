@@ -219,6 +219,7 @@ function ProjectsPage({ onProjectSelect }) {
               </label>
               <input
                 type="text"
+                name="name"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -235,6 +236,7 @@ function ProjectsPage({ onProjectSelect }) {
                 Description
               </label>
               <textarea
+                name="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
@@ -252,6 +254,7 @@ function ProjectsPage({ onProjectSelect }) {
               </label>
               <input
                 type="text"
+                name="root_path"
                 value={formData.root_path}
                 onChange={(e) => setFormData({ ...formData, root_path: e.target.value })}
                 style={{
@@ -268,6 +271,7 @@ function ProjectsPage({ onProjectSelect }) {
                 Default Engine
               </label>
               <select
+                name="default_engine"
                 value={formData.default_engine}
                 onChange={(e) => setFormData({ ...formData, default_engine: e.target.value })}
                 style={{
