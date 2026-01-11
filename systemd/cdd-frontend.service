@@ -1,0 +1,18 @@
+[Unit]
+Description=Change-Driven Development Frontend
+After=network.target
+
+[Service]
+Type=simple
+User=mysterx
+WorkingDirectory=/home/mysterx/dev/change-driven-dev/frontend
+Environment="NODE_ENV=production"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/npm run dev
+Restart=on-failure
+RestartSec=5s
+StandardOutput=append:/home/mysterx/dev/change-driven-dev/logs/frontend.log
+StandardError=append:/home/mysterx/dev/change-driven-dev/logs/frontend-error.log
+
+[Install]
+WantedBy=multi-user.target
