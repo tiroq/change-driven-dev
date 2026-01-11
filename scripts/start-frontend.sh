@@ -22,9 +22,22 @@ if [ ! -d "frontend/node_modules" ]; then
     exit 1
 fi
 
-# Start frontend using npx from node_modules
+# Load nvm if available
+if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    source "$HOME/.nvm/nvm.sh"
+fi
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "Error: npm not found. Please install Node.js and npm:"
+    echo "  - Via nvm (recommended): https://github.com/nvm-sh/nvm"
+    echo "  - Via apt: sudo apt install npm nodejs"
+    exit 1
+fi
+
+# Start frontend in background
 cd frontend
-./node_modules/.bin/vite > "../$LOG_FILE" 2>&1 &
+npm run dev > "../$LOG_FILE" 2>&1 &
 PID=$!
 cd ..
 
