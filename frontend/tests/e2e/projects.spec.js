@@ -27,7 +27,7 @@ test.describe('Projects Page Tests', () => {
     await page.fill('textarea[name="description"]', 'This is a test project description');
     
     // Submit the form
-    await page.click('button:has-text("Create")');
+    await page.click('button:has-text("Create Project")');
     
     // Wait for project to appear in the list
     await page.waitForSelector('text=New Test Project', { timeout: 5000 });
@@ -41,7 +41,7 @@ test.describe('Projects Page Tests', () => {
     await page.click('button:has-text("+ New Project")');
     
     // Try to submit without filling required fields
-    await page.click('button:has-text("Create")');
+    await page.click('button:has-text("Create Project")');
     
     // Should show validation errors or stay on form
     const nameInput = page.locator('input[name="name"]');
@@ -53,7 +53,7 @@ test.describe('Projects Page Tests', () => {
     await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Project to Edit');
     await page.fill('textarea[name="description"]', 'Original description');
-    await page.click('button:has-text("Create")');
+    await page.click('button:has-text("Create Project")');
     await page.waitForSelector('text=Project to Edit', { timeout: 5000 });
     
     // Edit the project
@@ -73,7 +73,7 @@ test.describe('Projects Page Tests', () => {
     await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Project to Delete');
     await page.fill('textarea[name="description"]', 'Will be deleted');
-    await page.click('button:has-text("Create")');
+    await page.click('button:has-text("Create Project")');
     await page.waitForSelector('text=Project to Delete', { timeout: 5000 });
     
     // Delete the project
@@ -94,7 +94,7 @@ test.describe('Projects Page Tests', () => {
     await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Selectable Project');
     await page.fill('textarea[name="description"]', 'Test selection');
-    await page.click('button:has-text("Create")');
+    await page.click('button:has-text("Create Project")');
     await page.waitForSelector('text=Selectable Project', { timeout: 5000 });
     
     // Click to select
@@ -122,7 +122,7 @@ test.describe('Projects Page Tests', () => {
       await page.click('button:has-text("+ New Project")');
       await page.fill('input[name="name"]', project.name);
       await page.fill('textarea[name="description"]', project.description);
-      await page.click('button:has-text("Create")');
+      await page.click('button:has-text("Create Project")');
       await page.waitForSelector(`text=${project.name}`, { timeout: 5000 });
     }
     
