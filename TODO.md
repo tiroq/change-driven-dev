@@ -1,5 +1,4 @@
 [ ] Postgress as alternative to SQLite
-[ ] Dockerfile for easy setup
 [ ] CI/CD integration
 [ ] Unit tests for core functionalities
 [ ] Documentation for API endpoints
