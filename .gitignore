@@ -30,6 +30,8 @@ backend/data/
 artifacts/
 backend/artifacts/
 *.log
+logs/
+.pids/
 
 # IDE
 .vscode/
