@@ -316,4 +316,54 @@ tasks:
       - sudo systemctl daemon-reload
       - echo "Services uninstalled"
 
+  # E2E Testing tasks
+  test-e2e:
+    desc: Run end-to-end tests (requires backend and frontend running)
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - npm test
+
+  test-e2e-ui:
+    desc: Run E2E tests in UI mode (interactive)
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - npm run test:ui
+
+  test-e2e-headed:
+    desc: Run E2E tests with visible browser
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - npm run test:headed
+
+  test-e2e-debug:
+    desc: Run E2E tests in debug mode
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - npm run test:debug
+
+  test-e2e-report:
+    desc: Show E2E test report
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm run test:report
+
+  test-e2e-install:
+    desc: Install Playwright browsers
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npx playwright install --with-deps
+
+  test:
+    desc: Run all tests (backend + E2E)
+    cmds:
+      - echo "Running backend tests..."
+      - task: test-backend
+      - echo ""
+      - echo "Running E2E tests..."
+      - task: test-e2e
+
 
