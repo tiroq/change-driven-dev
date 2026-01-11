@@ -64,6 +64,130 @@ tasks:
       - echo "Starting frontend on http://localhost:{{.FRONTEND_PORT}}"
       - npm run dev
 
+  # Background process management
+  start-bg:
+    desc: Start both backend and frontend in background
+    deps: [setup]
+    cmds:
+      - task: backend-bg
+      - task: frontend-bg
+      - sleep 2
+      - task: status-bg
+
+  backend-bg:
+    desc: Start backend in background
+    dir: "{{.BACKEND_DIR}}"
+    deps: [setup-backend]
+    cmds:
+      - |
+        if [ -f ../.pids/backend.pid ] && kill -0 $(cat ../.pids/backend.pid) 2>/dev/null; then
+          echo "Backend already running (PID: $(cat ../.pids/backend.pid))"
+          exit 0
+        fi
+        mkdir -p ../.pids ../logs
+        ../.venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port {{.BACKEND_PORT}} > ../logs/backend.log 2>&1 &
+        PID=$!
+        echo $PID > ../.pids/backend.pid
+        echo "Backend started in background (PID: $PID)"
+        echo "  Logs: logs/backend.log"
+        echo "  URL:  http://localhost:{{.BACKEND_PORT}}"
+
+  frontend-bg:
+    desc: Start frontend in background
+    dir: "{{.FRONTEND_DIR}}"
+    deps: [setup-frontend]
+    cmds:
+      - |
+        if [ -f ../.pids/frontend.pid ] && kill -0 $(cat ../.pids/frontend.pid) 2>/dev/null; then
+          echo "Frontend already running (PID: $(cat ../.pids/frontend.pid))"
+          exit 0
+        fi
+        mkdir -p ../.pids ../logs
+        npm run dev > ../logs/frontend.log 2>&1 &
+        PID=$!
+        echo $PID > ../.pids/frontend.pid
+        echo "Frontend started in background (PID: $PID)"
+        echo "  Logs: logs/frontend.log"
+        echo "  URL:  http://localhost:{{.FRONTEND_PORT}}"
+
+  stop-bg:
+    desc: Stop background processes
+    cmds:
+      - |
+        if [ -f .pids/backend.pid ]; then
+          PID=$(cat .pids/backend.pid)
+          if kill -0 $PID 2>/dev/null; then
+            kill $PID
+            echo "Backend stopped (PID: $PID)"
+          fi
+          rm -f .pids/backend.pid
+        else
+          echo "Backend not running"
+        fi
+      - |
+        if [ -f .pids/frontend.pid ]; then
+          PID=$(cat .pids/frontend.pid)
+          if kill -0 $PID 2>/dev/null; then
+            kill $PID
+            echo "Frontend stopped (PID: $PID)"
+          fi
+          rm -f .pids/frontend.pid
+        else
+          echo "Frontend not running"
+        fi
+
+  restart-bg:
+    desc: Restart background processes
+    cmds:
+      - task: stop-bg
+      - sleep 1
+      - task: start-bg
+
+  status-bg:
+    desc: Show status of background processes
+    cmds:
+      - |
+        echo "Process Status:"
+        echo ""
+        if [ -f .pids/backend.pid ]; then
+          PID=$(cat .pids/backend.pid)
+          if kill -0 $PID 2>/dev/null; then
+            echo "✓ Backend  - Running (PID: $PID) - http://localhost:{{.BACKEND_PORT}}"
+          else
+            echo "✗ Backend  - Not running (stale PID file)"
+            rm -f .pids/backend.pid
+          fi
+        else
+          echo "✗ Backend  - Not running"
+        fi
+        
+        if [ -f .pids/frontend.pid ]; then
+          PID=$(cat .pids/frontend.pid)
+          if kill -0 $PID 2>/dev/null; then
+            echo "✓ Frontend - Running (PID: $PID) - http://localhost:{{.FRONTEND_PORT}}"
+          else
+            echo "✗ Frontend - Not running (stale PID file)"
+            rm -f .pids/frontend.pid
+          fi
+        else
+          echo "✗ Frontend - Not running"
+        fi
+
+  logs-backend:
+    desc: Tail backend logs
+    cmds:
+      - tail -f logs/backend.log
+
+  logs-frontend:
+    desc: Tail frontend logs
+    cmds:
+      - tail -f logs/frontend.log
+
+  logs:
+    desc: Tail all logs
+    cmds:
+      - tail -f logs/backend.log logs/frontend.log
+
   # Database tasks
   db-init:
     desc: Initialize the main database
@@ -77,6 +201,7 @@ tasks:
   clean:
     desc: Clean up generated files and caches
     cmds:
+      - task: stop-bg
       - rm -rf {{.VENV_DIR}}
       - rm -rf {{.BACKEND_DIR}}/__pycache__
       - rm -rf {{.BACKEND_DIR}}/app/__pycache__
@@ -84,6 +209,7 @@ tasks:
       - find {{.BACKEND_DIR}} -type f -name "*.pyc" -delete
       - rm -rf {{.FRONTEND_DIR}}/node_modules
       - rm -rf {{.FRONTEND_DIR}}/dist
+      - rm -rf .pids
       - echo "Cleaned up build artifacts and dependencies"
 
   clean-db:
@@ -129,7 +255,7 @@ tasks:
 
   # Quick start
   start:
-    desc: Quick start - setup and display instructions
+    desc: Quick start - setup and start in background
     cmds:
       - task: setup
       - echo ""
@@ -137,12 +263,17 @@ tasks:
       - echo "Starting Change-Driven Development System"
       - echo "=========================================="
       - echo ""
-      - echo "Backend will run on http://localhost:{{.BACKEND_PORT}}"
-      - echo "Frontend will run on http://localhost:{{.FRONTEND_PORT}}"
+      - task: start-bg
       - echo ""
-      - echo "Open two terminals and run"
-      - echo "  Terminal 1 - task backend"
-      - echo "  Terminal 2 - task frontend"
+      - echo "Applications running in background"
+      - echo ""
+      - echo "Useful commands:"
+      - echo "  task status-bg       - Check status"
+      - echo "  task logs            - View all logs"
+      - echo "  task logs-backend    - View backend logs"
+      - echo "  task logs-frontend   - View frontend logs"
+      - echo "  task restart-bg      - Restart services"
+      - echo "  task stop-bg         - Stop services"
       - echo ""
 
   # Service management tasks
