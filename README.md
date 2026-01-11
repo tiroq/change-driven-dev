@@ -359,31 +359,118 @@ ws.onmessage = (event) => {
 };
 ```
 
-## Development
+## Testing
 
-### Running Tests
+### E2E Tests (Frontend)
+
+Comprehensive end-to-end tests using Playwright covering the complete workflow:
+
 ```bash
+# Install test dependencies (first time)
+task test-e2e-install
+
+# Run all E2E tests
+task test-e2e
+
+# Run in UI mode (interactive)
+task test-e2e-ui
+
+# Run with visible browser
+task test-e2e-headed
+
+# Debug mode
+task test-e2e-debug
+
+# View test report
+task test-e2e-report
+```
+
+**Test Coverage**:
+- ✅ Complete workflow (Project → CR → Tasks → Implementation)
+- ✅ Project management (CRUD operations)
+- ✅ Task operations (split, merge, status transitions)
+- ✅ Change request management
+- ✅ Navigation and state persistence
+- ✅ 42+ test cases covering all major user flows
+
+See [frontend/tests/README.md](frontend/tests/README.md) and [docs/TESTING.md](docs/TESTING.md) for details.
+
+### Backend Tests
+
+```bash
+# Run backend tests
+task test-backend
+
+# Or from backend directory
 cd backend
 pytest tests/ -v
 ```
 
-### Code Quality
+### Run All Tests
+
 ```bash
-# Linting
-ruff check .
-
-# Type checking
-mypy app/
-
-# Formatting
-ruff format .
+task test
 ```
 
-### Project Scripts
+## Development
+
+### Running Tests
 ```bash
-make dev      # Start development servers
-make test     # Run test suite
-make lint     # Run linters
+# All tests
+task test
+
+# Backend only
+task test-backend
+
+# E2E only
+task test-e2e
+
+# Quick smoke tests
+cd frontend
+npx playwright test smoke.spec.js
+```
+
+### Code Quality
+```bash
+# Backend linting
+task lint-backend
+
+# Backend formatting
+task format-backend
+
+# Type checking
+cd backend
+mypy app/
+```
+
+### Task Automation
+
+All development tasks available via Task runner:
+
+```bash
+# View all available tasks
+task --list
+
+# Setup and start
+task start           # Complete setup + start in background
+task start-bg        # Start in background
+task status-bg       # Check status
+task logs            # View all logs
+task stop-bg         # Stop all services
+
+# Development
+task backend         # Run backend (foreground)
+task frontend        # Run frontend (foreground)
+
+# Testing
+task test            # Run all tests
+task test-backend    # Backend tests
+task test-e2e        # E2E tests
+task test-e2e-ui     # E2E tests in UI mode
+
+# Cleanup
+task clean           # Clean build artifacts
+task clean-db        # Clean database
 ```
 
 ## License
