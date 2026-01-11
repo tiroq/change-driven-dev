@@ -59,6 +59,27 @@ gates:
   # If false, gates are advisory only
   fail_on_error: true
 
+# Database configuration
+database:
+  # Database type: 'sqlite' (default) or 'postgresql'
+  type: sqlite
+  
+  # SQLite-specific: Path for database files
+  path: ./data
+  
+  # PostgreSQL configuration (uncomment and configure to use)
+  # type: postgresql
+  # host: localhost
+  # port: 5432
+  # database: change_driven_dev
+  # username: cdd_user
+  # password: your_secure_password
+  # 
+  # # Connection pool settings
+  # pool_size: 5
+  # max_overflow: 10
+  # pool_timeout: 30
+
 # Additional project metadata
 metadata:
   version: "1.0.0"

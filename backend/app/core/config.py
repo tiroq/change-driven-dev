@@ -38,6 +38,53 @@ class GateConfig(BaseModel):
     )
 
 
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+    type: str = Field(
+        default="sqlite",
+        description="Database type: 'sqlite' or 'postgresql'"
+    )
+    # SQLite-specific
+    path: str = Field(
+        default="./data",
+        description="Path for SQLite database files (SQLite only)"
+    )
+    # PostgreSQL-specific
+    host: Optional[str] = Field(
+        default=None,
+        description="Database host (PostgreSQL only)"
+    )
+    port: Optional[int] = Field(
+        default=5432,
+        description="Database port (PostgreSQL only)"
+    )
+    database: Optional[str] = Field(
+        default=None,
+        description="Database name (PostgreSQL only)"
+    )
+    username: Optional[str] = Field(
+        default=None,
+        description="Database username (PostgreSQL only)"
+    )
+    password: Optional[str] = Field(
+        default=None,
+        description="Database password (PostgreSQL only)"
+    )
+    # Connection pool settings (PostgreSQL)
+    pool_size: int = Field(
+        default=5,
+        description="Connection pool size (PostgreSQL only)"
+    )
+    max_overflow: int = Field(
+        default=10,
+        description="Max overflow connections (PostgreSQL only)"
+    )
+    pool_timeout: int = Field(
+        default=30,
+        description="Pool timeout in seconds (PostgreSQL only)"
+    )
+
+
 class ProjectConfig(BaseModel):
     """
     Project-level configuration.
@@ -55,6 +102,10 @@ class ProjectConfig(BaseModel):
     gates: GateConfig = Field(
         default_factory=GateConfig,
         description="Gate execution settings"
+    )
+    database: DatabaseConfig = Field(
+        default_factory=DatabaseConfig,
+        description="Database configuration"
     )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
@@ -179,6 +230,25 @@ gates:
   
   # Fail task if gate errors (vs. just warning)
   fail_on_error: true
+
+# Database configuration
+database:
+  # Database type: 'sqlite' or 'postgresql'
+  type: sqlite
+  
+  # SQLite-specific settings
+  path: ./data
+  
+  # PostgreSQL-specific settings (uncomment to use)
+  # type: postgresql
+  # host: localhost
+  # port: 5432
+  # database: change_driven_dev
+  # username: cdd_user
+  # password: secure_password
+  # pool_size: 5
+  # max_overflow: 10
+  # pool_timeout: 30
 
 # Additional project metadata
 metadata:

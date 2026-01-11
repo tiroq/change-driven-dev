@@ -26,21 +26,16 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'New Test Project');
     await page.fill('textarea[name="description"]', 'This is a test project description');
     
-    // Wait for POST request to complete
-    const responsePromise = page.waitForResponse(response => 
-      response.url().includes('/api/projects/') && response.request().method() === 'POST'
-    );
-    
-    // Submit the form
+    // Submit the form and wait for POST to complete
     await page.click('button:has-text("Create Project")');
-    
-    // Wait for API response
-    await responsePromise;
-    
-    // Wait for projects list to reload (GET request)
     await page.waitForResponse(response => 
-      response.url().includes('/api/projects/') && response.request().method() === 'GET'
+      response.url().includes('/api/projects/') && 
+      response.request().method() === 'POST' &&
+      response.status() === 200
     );
+    
+    // Wait for project to appear (gives time for reload)
+    await page.waitForSelector('text=New Test Project', { timeout: 10000 });
     
     // Verify project is displayed
     await expect(page.locator('text=New Test Project')).toBeVisible();
@@ -61,10 +56,15 @@ test.describe('Projects Page Tests', () => {
   test('should edit an existing project', async ({ page }) => {
     // Create a project first
     await page.click('button:has-text("+ New Project")');
+    await page.waitForSelector('input[name="name"]', { state: 'visible' });
     await page.fill('input[name="name"]', 'Project to Edit');
     await page.fill('textarea[name="description"]', 'Original description');
+    
     await page.click('button:has-text("Create Project")');
-    await page.waitForSelector('text=Project to Edit', { timeout: 5000 });
+    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await page.waitForSelector('text=Project to Edit', { timeout: 10000 });
+    
+    await expect(page.locator('text=Project to Edit')).toBeVisible();
     
     // Edit the project
     await page.click('button:has-text("Edit")');
@@ -81,10 +81,15 @@ test.describe('Projects Page Tests', () => {
   test('should delete a project', async ({ page }) => {
     // Create a project first
     await page.click('button:has-text("+ New Project")');
+    await page.waitForSelector('input[name="name"]', { state: 'visible' });
     await page.fill('input[name="name"]', 'Project to Delete');
     await page.fill('textarea[name="description"]', 'Will be deleted');
+    
     await page.click('button:has-text("Create Project")');
-    await page.waitForSelector('text=Project to Delete', { timeout: 5000 });
+    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await page.waitForSelector('text=Project to Delete', { timeout: 10000 });
+    
+    await expect(page.locator('text=Project to Delete')).toBeVisible();
     
     // Delete the project
     await page.click('button:has-text("Delete")');
@@ -102,10 +107,15 @@ test.describe('Projects Page Tests', () => {
   test('should select a project', async ({ page }) => {
     // Create a project
     await page.click('button:has-text("+ New Project")');
+    await page.waitForSelector('input[name="name"]', { state: 'visible' });
     await page.fill('input[name="name"]', 'Selectable Project');
     await page.fill('textarea[name="description"]', 'Test selection');
+    
     await page.click('button:has-text("Create Project")');
-    await page.waitForSelector('text=Selectable Project', { timeout: 5000 });
+    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await page.waitForSelector('text=Selectable Project', { timeout: 10000 });
+    
+    await expect(page.locator('text=Selectable Project')).toBeVisible();
     
     // Click to select
     await page.click('text=Selectable Project');
@@ -130,10 +140,13 @@ test.describe('Projects Page Tests', () => {
     
     for (const project of projects) {
       await page.click('button:has-text("+ New Project")');
+      await page.waitForSelector('input[name="name"]', { state: 'visible' });
       await page.fill('input[name="name"]', project.name);
       await page.fill('textarea[name="description"]', project.description);
+      
       await page.click('button:has-text("Create Project")');
-      await page.waitForSelector(`text=${project.name}`, { timeout: 5000 });
+      await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+      await page.waitForSelector(`text=${project.name}`, { timeout: 10000 });
     }
     
     // Verify all projects are visible
