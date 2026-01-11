@@ -76,39 +76,15 @@ tasks:
 
   backend-bg:
     desc: Start backend in background
-    dir: "{{.BACKEND_DIR}}"
     deps: [setup-backend]
     cmds:
-      - |
-        if [ -f ../.pids/backend.pid ] && kill -0 $(cat ../.pids/backend.pid) 2>/dev/null; then
-          echo "Backend already running (PID: $(cat ../.pids/backend.pid))"
-          exit 0
-        fi
-        mkdir -p ../.pids ../logs
-        ../.venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port {{.BACKEND_PORT}} > ../logs/backend.log 2>&1 &
-        PID=$!
-        echo $PID > ../.pids/backend.pid
-        echo "Backend started in background (PID: $PID)"
-        echo "  Logs: logs/backend.log"
-        echo "  URL:  http://localhost:{{.BACKEND_PORT}}"
+      - bash scripts/start-backend.sh
 
   frontend-bg:
     desc: Start frontend in background
-    dir: "{{.FRONTEND_DIR}}"
     deps: [setup-frontend]
     cmds:
-      - |
-        if [ -f ../.pids/frontend.pid ] && kill -0 $(cat ../.pids/frontend.pid) 2>/dev/null; then
-          echo "Frontend already running (PID: $(cat ../.pids/frontend.pid))"
-          exit 0
-        fi
-        mkdir -p ../.pids ../logs
-        npm run dev > ../logs/frontend.log 2>&1 &
-        PID=$!
-        echo $PID > ../.pids/frontend.pid
-        echo "Frontend started in background (PID: $PID)"
-        echo "  Logs: logs/frontend.log"
-        echo "  URL:  http://localhost:{{.FRONTEND_PORT}}"
+      - bash scripts/start-frontend.sh
 
   stop-bg:
     desc: Stop background processes
