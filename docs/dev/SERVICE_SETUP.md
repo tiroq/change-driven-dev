@@ -17,6 +17,25 @@ The service files in `systemd/` directory use placeholders that are automaticall
 
 This makes the setup portable across different installations.
 
+## Quick Reference
+
+The service files use **placeholders** instead of hardcoded paths:
+
+```ini
+# Template (in git):
+User={{USER}}
+WorkingDirectory={{PROJECT_DIR}}/backend
+
+# After installation:
+User=mysterx
+WorkingDirectory=/home/mysterx/dev/change-driven-dev/backend
+```
+
+This makes the setup **portable** - it works regardless of:
+- Your username
+- Installation directory
+- Server/machine
+
 ## Installation Steps
 
 ### Quick Installation (Recommended)

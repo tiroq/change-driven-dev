@@ -1,4 +1,4 @@
-# Running Locally Without Docker
+# Local Development Setup
 
 ## Quick Start (Background Mode)
 
