@@ -1,0 +1,131 @@
+import { test, expect } from '@playwright/test';
+import { waitForBackend, cleanupTestData } from './setup.js';
+
+test.describe('Projects Page Tests', () => {
+  test.beforeAll(async () => {
+    await waitForBackend();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await cleanupTestData();
+    await page.goto('/');
+  });
+
+  test('should display projects page with header', async ({ page }) => {
+    await expect(page.locator('h1')).toContainText('Change-Driven Development');
+    await expect(page.locator('text=Projects')).toBeVisible();
+  });
+
+  test('should create a new project', async ({ page }) => {
+    await page.click('text=Create New Project');
+    
+    // Fill in project details
+    await page.fill('input[name="name"]', 'New Test Project');
+    await page.fill('textarea[name="description"]', 'This is a test project description');
+    
+    // Submit the form
+    await page.click('button:has-text("Create")');
+    
+    // Wait for project to appear in the list
+    await page.waitForSelector('text=New Test Project', { timeout: 5000 });
+    
+    // Verify project is displayed
+    await expect(page.locator('text=New Test Project')).toBeVisible();
+    await expect(page.locator('text=This is a test project description')).toBeVisible();
+  });
+
+  test('should validate project creation form', async ({ page }) => {
+    await page.click('text=Create New Project');
+    
+    // Try to submit without filling required fields
+    await page.click('button:has-text("Create")');
+    
+    // Should show validation errors or stay on form
+    const nameInput = page.locator('input[name="name"]');
+    await expect(nameInput).toBeVisible();
+  });
+
+  test('should edit an existing project', async ({ page }) => {
+    // Create a project first
+    await page.click('text=Create New Project');
+    await page.fill('input[name="name"]', 'Project to Edit');
+    await page.fill('textarea[name="description"]', 'Original description');
+    await page.click('button:has-text("Create")');
+    await page.waitForSelector('text=Project to Edit', { timeout: 5000 });
+    
+    // Edit the project
+    await page.click('button:has-text("Edit")');
+    await page.fill('input[name="name"]', 'Edited Project Name');
+    await page.fill('textarea[name="description"]', 'Updated description');
+    await page.click('button:has-text("Save")');
+    
+    // Verify changes
+    await page.waitForSelector('text=Edited Project Name', { timeout: 5000 });
+    await expect(page.locator('text=Edited Project Name')).toBeVisible();
+    await expect(page.locator('text=Updated description')).toBeVisible();
+  });
+
+  test('should delete a project', async ({ page }) => {
+    // Create a project first
+    await page.click('text=Create New Project');
+    await page.fill('input[name="name"]', 'Project to Delete');
+    await page.fill('textarea[name="description"]', 'Will be deleted');
+    await page.click('button:has-text("Create")');
+    await page.waitForSelector('text=Project to Delete', { timeout: 5000 });
+    
+    // Delete the project
+    await page.click('button:has-text("Delete")');
+    
+    // Confirm deletion if there's a confirmation dialog
+    const confirmButton = page.locator('button:has-text("Confirm")');
+    if (await confirmButton.count() > 0) {
+      await confirmButton.click();
+    }
+    
+    // Verify project is removed
+    await expect(page.locator('text=Project to Delete')).not.toBeVisible();
+  });
+
+  test('should select a project', async ({ page }) => {
+    // Create a project
+    await page.click('text=Create New Project');
+    await page.fill('input[name="name"]', 'Selectable Project');
+    await page.fill('textarea[name="description"]', 'Test selection');
+    await page.click('button:has-text("Create")');
+    await page.waitForSelector('text=Selectable Project', { timeout: 5000 });
+    
+    // Click to select
+    await page.click('text=Selectable Project');
+    
+    // Verify project is selected
+    await expect(page.locator('text=Selected Project: Selectable Project')).toBeVisible();
+  });
+
+  test('should display empty state when no projects exist', async ({ page }) => {
+    // Should show empty state or create button
+    const createButton = page.locator('text=Create New Project');
+    await expect(createButton).toBeVisible();
+  });
+
+  test('should list multiple projects', async ({ page }) => {
+    // Create multiple projects
+    const projects = [
+      { name: 'Project 1', description: 'First project' },
+      { name: 'Project 2', description: 'Second project' },
+      { name: 'Project 3', description: 'Third project' },
+    ];
+    
+    for (const project of projects) {
+      await page.click('text=Create New Project');
+      await page.fill('input[name="name"]', project.name);
+      await page.fill('textarea[name="description"]', project.description);
+      await page.click('button:has-text("Create")');
+      await page.waitForSelector(`text=${project.name}`, { timeout: 5000 });
+    }
+    
+    // Verify all projects are visible
+    for (const project of projects) {
+      await expect(page.locator(`text=${project.name}`)).toBeVisible();
+    }
+  });
+});
