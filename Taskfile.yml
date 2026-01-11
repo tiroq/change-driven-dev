@@ -46,7 +46,7 @@ tasks:
     desc: Run both backend and frontend in development mode
     deps: [setup]
     cmds:
-      - task: backend & task: frontend
+      - echo "Note - Run task backend and task frontend in separate terminals"
 
   backend:
     desc: Run backend development server
@@ -87,9 +87,9 @@ tasks:
       - echo "Cleaned up build artifacts and dependencies"
 
   clean-db:
-    desc: Remove all database files (WARNING: deletes all data)
-    prompt: This will delete all database files. Are you sure?
+    desc: Remove all database files (WARNING - deletes all data)
     cmds:
+      - echo "WARNING - This will delete all database files"
       - rm -f {{.BACKEND_DIR}}/data/*.db
       - echo "Database files removed"
 
@@ -125,11 +125,11 @@ tasks:
     desc: Install GitHub Copilot CLI (requires npm)
     cmds:
       - npm install -g @githubnext/github-copilot-cli
-      - echo "GitHub Copilot CLI installed. Run 'github-copilot-cli auth' to authenticate"
+      - echo "GitHub Copilot CLI installed. Run github-copilot-cli auth to authenticate"
 
   # Quick start
   start:
-    desc: Quick start - setup and run everything
+    desc: Quick start - setup and display instructions
     cmds:
       - task: setup
       - echo ""
@@ -137,7 +137,76 @@ tasks:
       - echo "Starting Change-Driven Development System"
       - echo "=========================================="
       - echo ""
-      - echo "Backend will run on: http://localhost:{{.BACKEND_PORT}}"
-      - echo "Frontend will run on: http://localhost:{{.FRONTEND_PORT}}"
+      - echo "Backend will run on http://localhost:{{.BACKEND_PORT}}"
+      - echo "Frontend will run on http://localhost:{{.FRONTEND_PORT}}"
       - echo ""
-      - task: dev
+      - echo "Open two terminals and run"
+      - echo "  Terminal 1 - task backend"
+      - echo "  Terminal 2 - task frontend"
+      - echo ""
+
+  # Service management tasks
+  service-install:
+    desc: Install systemd services (requires sudo)
+    cmds:
+      - mkdir -p logs
+      - mkdir -p /tmp/cdd-services
+      - sed -e "s|{{{{PROJECT_DIR}}}}|$(pwd)|g" -e "s|{{{{USER}}}}|$(whoami)|g" systemd/cdd-backend.service > /tmp/cdd-services/cdd-backend.service
+      - sed -e "s|{{{{PROJECT_DIR}}}}|$(pwd)|g" -e "s|{{{{USER}}}}|$(whoami)|g" systemd/cdd-frontend.service > /tmp/cdd-services/cdd-frontend.service
+      - sudo cp /tmp/cdd-services/*.service /etc/systemd/system/
+      - rm -rf /tmp/cdd-services
+      - sudo systemctl daemon-reload
+      - echo "Services installed. Run task service-enable to enable auto-start"
+
+  service-enable:
+    desc: Enable services to start on boot (requires sudo)
+    cmds:
+      - sudo systemctl enable cdd-backend
+      - sudo systemctl enable cdd-frontend
+      - echo "Services enabled for auto-start"
+
+  service-start:
+    desc: Start all services (requires sudo)
+    cmds:
+      - sudo systemctl start cdd-backend
+      - sudo systemctl start cdd-frontend
+      - sleep 2
+      - task: service-status
+
+  service-stop:
+    desc: Stop all services (requires sudo)
+    cmds:
+      - sudo systemctl stop cdd-backend
+      - sudo systemctl stop cdd-frontend
+
+  service-restart:
+    desc: Restart all services (requires sudo)
+    cmds:
+      - sudo systemctl restart cdd-backend
+      - sudo systemctl restart cdd-frontend
+      - sleep 2
+      - task: service-status
+
+  service-status:
+    desc: Show status of all services
+    cmds:
+      - sudo systemctl status cdd-backend --no-pager || true
+      - echo ""
+      - sudo systemctl status cdd-frontend --no-pager || true
+
+  service-logs:
+    desc: Tail service logs (Ctrl+C to exit)
+    cmds:
+      - sudo journalctl -u cdd-backend -u cdd-frontend -f
+
+  service-uninstall:
+    desc: Uninstall systemd services (requires sudo)
+    cmds:
+      - sudo systemctl stop cdd-backend cdd-frontend || true
+      - sudo systemctl disable cdd-backend cdd-frontend || true
+      - sudo rm -f /etc/systemd/system/cdd-backend.service
+      - sudo rm -f /etc/systemd/system/cdd-frontend.service
+      - sudo systemctl daemon-reload
+      - echo "Services uninstalled"
+
+
