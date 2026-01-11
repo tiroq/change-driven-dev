@@ -26,11 +26,21 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'New Test Project');
     await page.fill('textarea[name="description"]', 'This is a test project description');
     
+    // Wait for POST request to complete
+    const responsePromise = page.waitForResponse(response => 
+      response.url().includes('/api/projects/') && response.request().method() === 'POST'
+    );
+    
     // Submit the form
     await page.click('button:has-text("Create Project")');
     
-    // Wait for project to appear in the list
-    await page.waitForSelector('text=New Test Project', { timeout: 5000 });
+    // Wait for API response
+    await responsePromise;
+    
+    // Wait for projects list to reload (GET request)
+    await page.waitForResponse(response => 
+      response.url().includes('/api/projects/') && response.request().method() === 'GET'
+    );
     
     // Verify project is displayed
     await expect(page.locator('text=New Test Project')).toBeVisible();
