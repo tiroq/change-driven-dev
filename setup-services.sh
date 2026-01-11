@@ -15,6 +15,15 @@ if [ "$EUID" -eq 0 ]; then
    exit 1
 fi
 
+# Detect paths
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CURRENT_USER="$(whoami)"
+
+echo "Detected configuration:"
+echo "  Project directory: $PROJECT_DIR"
+echo "  User: $CURRENT_USER"
+echo ""
+
 # Check prerequisites
 echo "Checking prerequisites..."
 
@@ -46,10 +55,23 @@ echo "Creating log directory..."
 mkdir -p logs
 
 echo ""
+echo "Preparing systemd service files..."
+mkdir -p /tmp/cdd-services
+
+# Replace placeholders in service files
+for service_file in systemd/*.service; do
+    filename="$(basename "$service_file")"
+    sed -e "s|{{PROJECT_DIR}}|$PROJECT_DIR|g" \
+        -e "s|{{USER}}|$CURRENT_USER|g" \
+        "$service_file" > "/tmp/cdd-services/$filename"
+    echo "  Prepared $filename"
+done
+
+echo ""
 echo "Installing systemd services (requires sudo)..."
-sudo cp systemd/cdd-backend.service /etc/systemd/system/
-sudo cp systemd/cdd-frontend.service /etc/systemd/system/
+sudo cp /tmp/cdd-services/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
+rm -rf /tmp/cdd-services
 
 echo ""
 read -p "Enable services to start on boot? (y/n) " -n 1 -r

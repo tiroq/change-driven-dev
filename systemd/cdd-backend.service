@@ -4,14 +4,14 @@ After=network.target
 
 [Service]
 Type=simple
-User=mysterx
-WorkingDirectory=/home/mysterx/dev/change-driven-dev/backend
-Environment="PATH=/home/mysterx/dev/change-driven-dev/.venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/home/mysterx/dev/change-driven-dev/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+User={{USER}}
+WorkingDirectory={{PROJECT_DIR}}/backend
+Environment="PATH={{PROJECT_DIR}}/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart={{PROJECT_DIR}}/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 RestartSec=5s
-StandardOutput=append:/home/mysterx/dev/change-driven-dev/logs/backend.log
-StandardError=append:/home/mysterx/dev/change-driven-dev/logs/backend-error.log
+StandardOutput=append:{{PROJECT_DIR}}/logs/backend.log
+StandardError=append:{{PROJECT_DIR}}/logs/backend-error.log
 
 [Install]
 WantedBy=multi-user.target
