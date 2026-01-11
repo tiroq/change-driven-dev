@@ -15,7 +15,7 @@ test.describe('Planner Page Tests', () => {
   });
 
   test('should display planner page', async ({ page }) => {
-    await expect(page.locator('text=Planner')).toBeVisible();
+    await expect(page.locator('h2:has-text("Planner")')).toBeVisible();
     await expect(page.locator('text=Change Requests')).toBeVisible();
   });
 

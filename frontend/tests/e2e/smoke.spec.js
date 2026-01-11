@@ -16,7 +16,7 @@ test.describe('Smoke Tests', () => {
     
     const navLinks = ['Projects', 'Tasks', 'Planner', 'Architect', 'Review', 'Coder'];
     for (const link of navLinks) {
-      await expect(page.locator(`text=${link}`)).toBeVisible();
+      await expect(page.getByRole('link', { name: link })).toBeVisible();
     }
   });
 
@@ -44,6 +44,6 @@ test.describe('Smoke Tests', () => {
 
   test('Projects page has create button', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=Create New Project')).toBeVisible();
+    await expect(page.locator('button:has-text("+ New Project")')).toBeVisible();
   });
 });

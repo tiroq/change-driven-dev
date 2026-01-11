@@ -16,7 +16,7 @@ test.describe('Tasks Page Tests', () => {
   });
 
   test('should display tasks page', async ({ page }) => {
-    await expect(page.locator('text=Tasks')).toBeVisible();
+    await expect(page.locator('h2:has-text("Tasks")')).toBeVisible();
   });
 
   test('should show empty state when no tasks exist', async ({ page }) => {

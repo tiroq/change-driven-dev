@@ -19,9 +19,9 @@ test.describe('Full Workflow E2E Tests', () => {
 
     // Step 2: Create a new project
     await page.click('text=Projects');
-    await page.waitForSelector('text=Create New Project', { timeout: 5000 });
+    await page.waitForSelector('button:has-text("+ New Project")', { timeout: 5000 });
     
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'E2E Test Project');
     await page.fill('textarea[name="description"]', 'This is an end-to-end test project');
     await page.click('button:has-text("Create")');
@@ -108,7 +108,7 @@ test.describe('Full Workflow E2E Tests', () => {
     await page.goto('/');
 
     // Create first project
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Project Alpha');
     await page.fill('textarea[name="description"]', 'First test project');
     await page.click('button:has-text("Create")');
@@ -137,7 +137,7 @@ test.describe('Full Workflow E2E Tests', () => {
   test('Create change request and verify details', async ({ page }) => {
     // Create a project first
     await page.goto('/');
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'CR Test Project');
     await page.fill('textarea[name="description"]', 'Project for CR testing');
     await page.click('button:has-text("Create")');
@@ -165,7 +165,7 @@ test.describe('Full Workflow E2E Tests', () => {
   test('Task status transitions', async ({ page }) => {
     // Setup: Create project and CR with tasks
     await page.goto('/');
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Status Test Project');
     await page.fill('textarea[name="description"]', 'Project for status testing');
     await page.click('button:has-text("Create")');
@@ -205,7 +205,7 @@ test.describe('Full Workflow E2E Tests', () => {
   test('Navigation and project context persistence', async ({ page }) => {
     // Create a project
     await page.goto('/');
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Navigation Test');
     await page.fill('textarea[name="description"]', 'Testing navigation');
     await page.click('button:has-text("Create")');

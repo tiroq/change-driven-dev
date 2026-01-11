@@ -13,11 +13,14 @@ test.describe('Projects Page Tests', () => {
 
   test('should display projects page with header', async ({ page }) => {
     await expect(page.locator('h1')).toContainText('Change-Driven Development');
-    await expect(page.locator('text=Projects')).toBeVisible();
+    await expect(page.locator('h2:has-text("Projects")')).toBeVisible();
   });
 
   test('should create a new project', async ({ page }) => {
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
+    
+    // Wait for form to appear
+    await page.waitForSelector('input[name="name"]', { state: 'visible' });
     
     // Fill in project details
     await page.fill('input[name="name"]', 'New Test Project');
@@ -35,7 +38,7 @@ test.describe('Projects Page Tests', () => {
   });
 
   test('should validate project creation form', async ({ page }) => {
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     
     // Try to submit without filling required fields
     await page.click('button:has-text("Create")');
@@ -47,7 +50,7 @@ test.describe('Projects Page Tests', () => {
 
   test('should edit an existing project', async ({ page }) => {
     // Create a project first
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Project to Edit');
     await page.fill('textarea[name="description"]', 'Original description');
     await page.click('button:has-text("Create")');
@@ -67,7 +70,7 @@ test.describe('Projects Page Tests', () => {
 
   test('should delete a project', async ({ page }) => {
     // Create a project first
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Project to Delete');
     await page.fill('textarea[name="description"]', 'Will be deleted');
     await page.click('button:has-text("Create")');
@@ -88,7 +91,7 @@ test.describe('Projects Page Tests', () => {
 
   test('should select a project', async ({ page }) => {
     // Create a project
-    await page.click('text=Create New Project');
+    await page.click('button:has-text("+ New Project")');
     await page.fill('input[name="name"]', 'Selectable Project');
     await page.fill('textarea[name="description"]', 'Test selection');
     await page.click('button:has-text("Create")');
@@ -103,7 +106,7 @@ test.describe('Projects Page Tests', () => {
 
   test('should display empty state when no projects exist', async ({ page }) => {
     // Should show empty state or create button
-    const createButton = page.locator('text=Create New Project');
+    const createButton = page.locator('button:has-text("+ New Project")');
     await expect(createButton).toBeVisible();
   });
 
@@ -116,7 +119,7 @@ test.describe('Projects Page Tests', () => {
     ];
     
     for (const project of projects) {
-      await page.click('text=Create New Project');
+      await page.click('button:has-text("+ New Project")');
       await page.fill('input[name="name"]', project.name);
       await page.fill('textarea[name="description"]', project.description);
       await page.click('button:has-text("Create")');
