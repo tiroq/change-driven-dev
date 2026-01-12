@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.db import get_db
+from app.db import get_db, get_db_session
 from app.db import dao
 from app.models import TaskStatus, PhaseType
 from app.core.events import EventType, emit_task_event
@@ -86,7 +86,7 @@ async def list_tasks(
     phase: Optional[PhaseType] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """List all tasks, optionally filtered by project, status, or phase"""
     tasks = dao.list_tasks(db, project_id=project_id, status=status, phase=phase, skip=skip, limit=limit)
@@ -94,7 +94,7 @@ async def list_tasks(
 
 
 @router.post("/", response_model=TaskResponse)
-async def create_task(task: TaskCreate, db: Session = Depends(lambda: next(get_db(task.project_id)))):
+async def create_task(task: TaskCreate, db: Session = Depends(lambda: next(get_db(1)))):
     """Create a new task"""
     new_task = dao.create_task(
         db,
@@ -110,7 +110,7 @@ async def create_task(task: TaskCreate, db: Session = Depends(lambda: next(get_d
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: int, project_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_task(task_id: int, project_id: int, db: Session = Depends(get_db_session)):
     """Get a task by ID"""
     task = dao.get_task(db, task_id)
     if not task:
@@ -123,7 +123,7 @@ async def update_task(
     task_id: int,
     project_id: int,
     updates: TaskUpdate,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """
     Update a task and create a new version in the history.
@@ -182,7 +182,7 @@ async def update_task(
 
 
 @router.delete("/{task_id}")
-async def delete_task(task_id: int, project_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def delete_task(task_id: int, project_id: int, db: Session = Depends(get_db_session)):
     """Delete a task"""
     success = dao.delete_task(db, task_id)
     if not success:
@@ -194,7 +194,7 @@ async def delete_task(task_id: int, project_id: int, db: Session = Depends(lambd
 
 
 @router.post("/{task_id}/approve")
-async def approve_task(task_id: int, project_id: int, approver: str = "system", db: Session = Depends(lambda: next(get_db(1)))):
+async def approve_task(task_id: int, project_id: int, approver: str = "system", db: Session = Depends(get_db_session)):
     """Approve a task"""
     task = dao.get_task(db, task_id)
     if not task:
@@ -215,7 +215,7 @@ async def approve_task(task_id: int, project_id: int, approver: str = "system", 
 
 
 @router.post("/{task_id}/advance")
-async def advance_task(task_id: int, project_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def advance_task(task_id: int, project_id: int, db: Session = Depends(get_db_session)):
     """Advance task to next phase"""
     task = dao.get_task(db, task_id)
     if not task:
@@ -248,7 +248,7 @@ async def advance_task(task_id: int, project_id: int, db: Session = Depends(lamb
 
 
 @router.get("/{task_id}/versions", response_model=List[TaskVersionResponse])
-async def get_task_versions(task_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_task_versions(task_id: int, db: Session = Depends(get_db_session)):
     """Get all versions of a task"""
     task = dao.get_task(db, task_id)
     if not task:
@@ -263,7 +263,7 @@ async def split_task(
     task_id: int, 
     project_id: int,
     split_request: TaskSplitRequest,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """Split a task into two new tasks"""
     # Get the original task
@@ -318,7 +318,7 @@ async def split_task(
 async def merge_tasks(
     project_id: int,
     merge_request: TaskMergeRequest,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """Merge multiple tasks into a single task"""
     import json

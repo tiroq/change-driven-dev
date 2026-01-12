@@ -1,4 +1,4 @@
-[ ] Postgress as alternative to SQLite
+[x] PostgreSQL as alternative to SQLite (see backend/docs/DATABASE_MIGRATION.md)
 [ ] CI/CD integration
 [ ] Unit tests for core functionalities
 [ ] Documentation for API endpoints

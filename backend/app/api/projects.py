@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.db import get_db, db_manager
+from app.db import get_db, get_db_session, db_manager
 from app.db import dao
 from app.core.events import event_bus, EventType, emit_project_event
 
@@ -45,14 +45,14 @@ class ProjectResponse(BaseModel):
 
 
 @router.get("/", response_model=List[ProjectResponse])
-async def list_projects(skip: int = 0, limit: int = 100, db: Session = Depends(lambda: next(get_db(1)))):
+async def list_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db_session)):
     """List all projects"""
     projects = dao.list_projects(db, skip=skip, limit=limit)
     return projects
 
 
 @router.post("/", response_model=ProjectResponse)
-async def create_project(project: ProjectCreate, db: Session = Depends(lambda: next(get_db(1)))):
+async def create_project(project: ProjectCreate, db: Session = Depends(get_db_session)):
     """Create a new project"""
     # Check if project name already exists
     existing = dao.get_project_by_name(db, project.name)
@@ -86,7 +86,7 @@ async def create_project(project: ProjectCreate, db: Session = Depends(lambda: n
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_project(project_id: int, db: Session = Depends(get_db_session)):
     """Get a project by ID"""
     project = dao.get_project(db, project_id)
     if not project:
@@ -98,7 +98,7 @@ async def get_project(project_id: int, db: Session = Depends(lambda: next(get_db
 async def update_project(
     project_id: int,
     updates: ProjectUpdate,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """Update a project"""
     project = dao.get_project(db, project_id)
@@ -117,7 +117,7 @@ async def update_project(
 
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def delete_project(project_id: int, db: Session = Depends(get_db_session)):
     """Delete a project"""
     success = dao.delete_project(db, project_id)
     if not success:

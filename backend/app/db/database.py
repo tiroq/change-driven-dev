@@ -1,14 +1,16 @@
 """
 Database initialization and connection management.
 Supports per-project SQLite databases and PostgreSQL with schema-based multi-tenancy.
+Also supports a unified test mode for easier testing.
 """
 
 from pathlib import Path
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import NullPool, QueuePool, StaticPool
 from typing import Generator, Optional
 from threading import Lock
+import os
 
 from app.models import Base
 from app.core.config import DatabaseConfig
@@ -17,16 +19,41 @@ from app.core.config import DatabaseConfig
 class DatabaseManager:
     """Manages database connections for projects"""
     
-    def __init__(self, db_config: Optional[DatabaseConfig] = None):
+    def __init__(self, db_config: Optional[DatabaseConfig] = None, test_mode: bool = False):
         self.db_config = db_config or DatabaseConfig()
+        self.test_mode = test_mode or os.getenv("TEST_MODE", "").lower() == "true"
         self.engines = {}
         self.session_makers = {}
         self._lock = Lock()  # Thread synchronization for dictionary access
         
-        # For SQLite, ensure base path exists
-        if self.db_config.type == "sqlite":
-            self.db_base_path = Path(self.db_config.path)
-            self.db_base_path.mkdir(parents=True, exist_ok=True)
+        # In test mode, use a single shared engine
+        if self.test_mode:
+            self._test_engine = None
+            self._test_session_maker = None
+        else:
+            # For SQLite, ensure base path exists
+            if self.db_config.type == "sqlite":
+                self.db_base_path = Path(self.db_config.path)
+                self.db_base_path.mkdir(parents=True, exist_ok=True)
+    
+    def _init_test_database(self):
+        """Initialize a single shared database for all projects in test mode"""
+        if self._test_engine is None:
+            # Use in-memory SQLite for tests with StaticPool
+            # StaticPool maintains a single connection, which is required for
+            # in-memory SQLite (otherwise the database is lost when connection closes)
+            self._test_engine = create_engine(
+                "sqlite:///:memory:",
+                echo=False,
+                connect_args={"check_same_thread": False},
+                poolclass=StaticPool
+            )
+            Base.metadata.create_all(bind=self._test_engine)
+            self._test_session_maker = sessionmaker(
+                autocommit=False,
+                autoflush=False,
+                bind=self._test_engine
+            )
     
     def _build_database_url(self, project_id: int) -> str:
         """Build database URL based on configuration type"""
@@ -66,6 +93,9 @@ class DatabaseManager:
     
     def get_db_path(self, project_id: int) -> str:
         """Get database path/identifier for a project"""
+        if self.test_mode:
+            return ":memory:"
+        
         if self.db_config.type == "sqlite":
             return str(self.db_base_path / f"project_{project_id}.db")
         else:
@@ -73,6 +103,11 @@ class DatabaseManager:
     
     def init_project_db(self, project_id: int) -> None:
         """Initialize database for a project"""
+        # In test mode, skip per-project initialization
+        if self.test_mode:
+            self._init_test_database()
+            return
+        
         db_url = self._build_database_url(project_id)
         engine_kwargs = self._get_engine_kwargs()
         
@@ -114,6 +149,18 @@ class DatabaseManager:
     
     def get_session(self, project_id: int) -> Generator[Session, None, None]:
         """Get database session for a project"""
+        # In test mode, use shared test database
+        if self.test_mode:
+            if self._test_session_maker is None:
+                self._init_test_database()
+            db = self._test_session_maker()
+            try:
+                yield db
+            finally:
+                db.close()
+            return
+        
+        # Normal mode: per-project databases
         if project_id not in self.session_makers:
             with self._lock:
                 # Double-check after acquiring lock to prevent race conditions
@@ -130,9 +177,44 @@ class DatabaseManager:
     def configure(self, db_config: DatabaseConfig) -> None:
         """Update database configuration (for runtime reconfiguration)"""
         self.db_config = db_config
-        if db_config.type == "sqlite":
+        if db_config.type == "sqlite" and not self.test_mode:
             self.db_base_path = Path(db_config.path)
             self.db_base_path.mkdir(parents=True, exist_ok=True)
+    
+    def enable_test_mode(self):
+        """Enable test mode (uses single shared in-memory database)"""
+        self.test_mode = True
+        self._test_engine = None
+        self._test_session_maker = None
+    
+    def disable_test_mode(self):
+        """Disable test mode (back to per-project databases)"""
+        self.test_mode = False
+        if hasattr(self, '_test_engine') and self._test_engine:
+            self._test_engine.dispose()
+        self._test_engine = None
+        self._test_session_maker = None
+    
+    def cleanup_test_database(self):
+        """Clear all data from test database (for test isolation between tests)"""
+        if self.test_mode and self._test_session_maker:
+            session = self._test_session_maker()
+            try:
+                # Delete in reverse order to handle foreign key constraints
+                for table in reversed(Base.metadata.sorted_tables):
+                    session.execute(table.delete())
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+    
+    def reset_test_database(self):
+        """Drop and recreate all tables in test database (full reset)"""
+        if self.test_mode and self._test_engine:
+            Base.metadata.drop_all(bind=self._test_engine)
+            Base.metadata.create_all(bind=self._test_engine)
 
 
 # Global database manager instance
@@ -149,6 +231,25 @@ def get_db_for_project(project_id: int) -> Generator[Session, None, None]:
     yield from db_manager.get_session(project_id)
 
 
+def get_db_session() -> Generator[Session, None, None]:
+    """FastAPI dependency for database session (default project 1).
+    
+    This is designed to be easily overridden in tests using
+    app.dependency_overrides[get_db_session] = override_function
+    """
+    yield from db_manager.get_session(1)
+
+
 def configure_database(db_config: DatabaseConfig) -> None:
     """Configure database manager with custom settings"""
     db_manager.configure(db_config)
+
+
+def enable_test_mode():
+    """Enable test mode globally"""
+    db_manager.enable_test_mode()
+
+
+def disable_test_mode():
+    """Disable test mode globally"""
+    db_manager.disable_test_mode()

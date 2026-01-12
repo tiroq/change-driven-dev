@@ -9,7 +9,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from pathlib import Path
 
-from app.db import get_db
+from app.db import get_db, get_db_session
 from app.db import dao
 from app.models.models import ArtifactType
 from app.core.events import EventType, Event, event_bus
@@ -54,7 +54,7 @@ async def list_artifacts(
     artifact_type: Optional[ArtifactType] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """List artifacts with optional filters"""
     artifacts = dao.list_artifacts(
@@ -70,7 +70,7 @@ async def list_artifacts(
 
 
 @router.post("/", response_model=ArtifactResponse)
-async def create_artifact(artifact: ArtifactCreate, db: Session = Depends(lambda: next(get_db(1)))):
+async def create_artifact(artifact: ArtifactCreate, db: Session = Depends(get_db_session)):
     """Create a new artifact (metadata only)"""
     new_artifact = dao.create_artifact(
         db,
@@ -107,7 +107,7 @@ async def upload_artifact(
     artifact_type: str = Form(...),
     task_id: Optional[int] = Form(None),
     run_id: Optional[int] = Form(None),
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """Upload an artifact file"""
     try:
@@ -148,7 +148,7 @@ async def upload_artifact(
 
 
 @router.get("/{artifact_id}", response_model=ArtifactResponse)
-async def get_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_artifact(artifact_id: int, db: Session = Depends(get_db_session)):
     """Get an artifact by ID"""
     artifact = dao.get_artifact(db, artifact_id)
     if not artifact:
@@ -157,7 +157,7 @@ async def get_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_
 
 
 @router.get("/{artifact_id}/download")
-async def download_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def download_artifact(artifact_id: int, db: Session = Depends(get_db_session)):
     """Download an artifact file"""
     try:
         artifact_dict, file_path = artifact_storage.retrieve_artifact(db, artifact_id)
@@ -179,7 +179,7 @@ async def download_artifact(artifact_id: int, db: Session = Depends(lambda: next
 
 
 @router.get("/{artifact_id}/content")
-async def get_artifact_content(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_artifact_content(artifact_id: int, db: Session = Depends(get_db_session)):
     """Get artifact content (text files only)"""
     try:
         artifact_dict, file_path = artifact_storage.retrieve_artifact(db, artifact_id)
@@ -206,7 +206,7 @@ async def get_artifact_content(artifact_id: int, db: Session = Depends(lambda: n
 
 
 @router.delete("/{artifact_id}")
-async def delete_artifact(artifact_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def delete_artifact(artifact_id: int, db: Session = Depends(get_db_session)):
     """Delete an artifact"""
     artifact = dao.get_artifact(db, artifact_id)
     if not artifact:

@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 import json
 
-from app.db import get_db
+from app.db import get_db, get_db_session
 from app.db import dao
 from app.core.gates import GateSpec, GateRunner, GateResult
 from app.core.sandbox import CommandRunner
@@ -37,7 +37,7 @@ class GateExecutionRequest(BaseModel):
 
 
 @router.get("/task/{task_id}", response_model=List[dict])
-async def get_task_gates(task_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_task_gates(task_id: int, db: Session = Depends(get_db_session)):
     """
     Get gates configured for a task.
     Gates are stored in the latest TaskVersion.gates_json field.

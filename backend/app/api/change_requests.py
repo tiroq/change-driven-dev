@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.db import get_db
+from app.db import get_db, get_db_session
 from app.db import dao
 from app.models import ChangeRequestStatus, PhaseType
 from app.core.events import EventType, Event, event_bus
@@ -41,7 +41,7 @@ async def list_change_requests(
     status: Optional[ChangeRequestStatus] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(lambda: next(get_db(1)))
+    db: Session = Depends(get_db_session)
 ):
     """List all change requests, optionally filtered by task"""
     crs = dao.list_change_requests(db, task_id=task_id, status=status, skip=skip, limit=limit)
@@ -49,7 +49,7 @@ async def list_change_requests(
 
 
 @router.post("/", response_model=ChangeRequestResponse)
-async def create_change_request(cr: ChangeRequestCreate, db: Session = Depends(lambda: next(get_db(1)))):
+async def create_change_request(cr: ChangeRequestCreate, db: Session = Depends(get_db_session)):
     """Create a new change request"""
     # Get task to retrieve project_id
     task = dao.get_task(db, cr.task_id)
@@ -75,7 +75,7 @@ async def create_change_request(cr: ChangeRequestCreate, db: Session = Depends(l
 
 
 @router.get("/{cr_id}", response_model=ChangeRequestResponse)
-async def get_change_request(cr_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def get_change_request(cr_id: int, db: Session = Depends(get_db_session)):
     """Get a change request by ID"""
     cr = dao.get_change_request(db, cr_id)
     if not cr:
@@ -84,7 +84,7 @@ async def get_change_request(cr_id: int, db: Session = Depends(lambda: next(get_
 
 
 @router.post("/{cr_id}/submit")
-async def submit_change_request(cr_id: int, db: Session = Depends(lambda: next(get_db(1)))):
+async def submit_change_request(cr_id: int, db: Session = Depends(get_db_session)):
     """Submit a change request for approval"""
     cr = dao.get_change_request(db, cr_id)
     if not cr:
@@ -109,7 +109,7 @@ async def submit_change_request(cr_id: int, db: Session = Depends(lambda: next(g
 
 
 @router.post("/{cr_id}/approve")
-async def approve_change_request(cr_id: int, approver: str = "system", db: Session = Depends(lambda: next(get_db(1)))):
+async def approve_change_request(cr_id: int, approver: str = "system", db: Session = Depends(get_db_session)):
     """Approve a change request"""
     cr = dao.get_change_request(db, cr_id)
     if not cr:
@@ -137,7 +137,7 @@ async def approve_change_request(cr_id: int, approver: str = "system", db: Sessi
 
 
 @router.post("/{cr_id}/reject")
-async def reject_change_request(cr_id: int, approver: str = "system", reason: Optional[str] = None, db: Session = Depends(lambda: next(get_db(1)))):
+async def reject_change_request(cr_id: int, approver: str = "system", reason: Optional[str] = None, db: Session = Depends(get_db_session)):
     """Reject a change request"""
     cr = dao.get_change_request(db, cr_id)
     if not cr:
