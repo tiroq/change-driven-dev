@@ -11,9 +11,39 @@ from sqlalchemy.pool import NullPool, QueuePool, StaticPool
 from typing import Generator, Optional
 from threading import Lock
 import os
+import subprocess
+import sys
 
 from app.models import Base
 from app.core.config import DatabaseConfig
+
+
+def run_migrations(db_url: str, project_id: int) -> None:
+    """
+    Run alembic migrations for a database.
+    For PostgreSQL, temporarily sets the schema before running migrations.
+    """
+    alembic_dir = Path(__file__).parent.parent.parent / "alembic"
+    alembic_ini = Path(__file__).parent.parent.parent / "alembic.ini"
+    
+    if not alembic_ini.exists():
+        raise FileNotFoundError(f"Alembic config not found: {alembic_ini}")
+    
+    # Use subprocess to run alembic upgrade head
+    env = os.environ.copy()
+    env["ALEMBIC_DB_URL"] = db_url
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "-c", str(alembic_ini), "upgrade", "head"],
+            cwd=alembic_dir.parent,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Migration failed: {e.stderr}") from e
 
 
 class DatabaseManager:
@@ -48,6 +78,7 @@ class DatabaseManager:
                 connect_args={"check_same_thread": False},
                 poolclass=StaticPool
             )
+            # In test mode, use create_all for speed (migrations not needed for tests)
             Base.metadata.create_all(bind=self._test_engine)
             self._test_session_maker = sessionmaker(
                 autocommit=False,
@@ -120,13 +151,12 @@ class DatabaseManager:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
                 conn.commit()
             
-            # Create tables in the project schema
-            Base.metadata.schema = schema_name
-            Base.metadata.create_all(bind=engine)
-            Base.metadata.schema = None  # Reset to avoid side effects
+            # Run migrations in the project schema
+            # Note: Alembic will handle setting the schema via search_path
+            run_migrations(db_url, project_id)
         else:
-            # SQLite: create all tables normally
-            Base.metadata.create_all(bind=engine)
+            # SQLite: run migrations to create/update schema
+            run_migrations(db_url, project_id)
         
         self.engines[project_id] = engine
         self.session_makers[project_id] = sessionmaker(
@@ -214,6 +244,7 @@ class DatabaseManager:
         """Drop and recreate all tables in test database (full reset)"""
         if self.test_mode and self._test_engine:
             Base.metadata.drop_all(bind=self._test_engine)
+            # In test mode, use create_all for speed
             Base.metadata.create_all(bind=self._test_engine)
 
 
