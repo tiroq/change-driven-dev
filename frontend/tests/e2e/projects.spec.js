@@ -26,13 +26,17 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'New Test Project');
     await page.fill('textarea[name="description"]', 'This is a test project description');
     
-    // Submit the form and wait for POST to complete
-    await page.click('button:has-text("Create Project")');
-    await page.waitForResponse(response => 
+    // Set up response waiter BEFORE clicking
+    const responsePromise = page.waitForResponse(response => 
       response.url().includes('/api/projects/') && 
-      response.request().method() === 'POST' &&
-      response.status() === 200
+      response.request().method() === 'POST'
     );
+    
+    // Submit the form
+    await page.click('button:has-text("Create Project")');
+    
+    // Wait for POST to complete
+    await responsePromise;
     
     // Wait for project to appear (gives time for reload)
     await page.waitForSelector('text=New Test Project', { timeout: 10000 });
@@ -60,8 +64,9 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'Project to Edit');
     await page.fill('textarea[name="description"]', 'Original description');
     
+    const responsePromise = page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST');
     await page.click('button:has-text("Create Project")');
-    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await responsePromise;
     await page.waitForSelector('text=Project to Edit', { timeout: 10000 });
     
     await expect(page.locator('text=Project to Edit')).toBeVisible();
@@ -85,8 +90,9 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'Project to Delete');
     await page.fill('textarea[name="description"]', 'Will be deleted');
     
+    const responsePromise = page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST');
     await page.click('button:has-text("Create Project")');
-    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await responsePromise;
     await page.waitForSelector('text=Project to Delete', { timeout: 10000 });
     
     await expect(page.locator('text=Project to Delete')).toBeVisible();
@@ -111,8 +117,9 @@ test.describe('Projects Page Tests', () => {
     await page.fill('input[name="name"]', 'Selectable Project');
     await page.fill('textarea[name="description"]', 'Test selection');
     
+    const responsePromise = page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST');
     await page.click('button:has-text("Create Project")');
-    await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+    await responsePromise;
     await page.waitForSelector('text=Selectable Project', { timeout: 10000 });
     
     await expect(page.locator('text=Selectable Project')).toBeVisible();
@@ -144,8 +151,9 @@ test.describe('Projects Page Tests', () => {
       await page.fill('input[name="name"]', project.name);
       await page.fill('textarea[name="description"]', project.description);
       
+      const responsePromise = page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST');
       await page.click('button:has-text("Create Project")');
-      await page.waitForResponse(r => r.url().includes('/api/projects/') && r.request().method() === 'POST' && r.status() === 200);
+      await responsePromise;
       await page.waitForSelector(`text=${project.name}`, { timeout: 10000 });
     }
     

@@ -37,6 +37,9 @@ export async function cleanupTestData() {
         method: 'DELETE',
       });
     }
+    
+    // Give the backend a moment to settle after cleanup
+    await new Promise(resolve => setTimeout(resolve, 500));
   } catch (error) {
     console.error('Cleanup failed:', error);
   }
