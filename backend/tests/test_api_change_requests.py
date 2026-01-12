@@ -36,7 +36,7 @@ class TestChangeRequestsAPI:
         assert data["task_id"] == task["id"]
         assert data["phase"] == "planner"
         assert data["content"] == "This is a test change request"
-        assert data["status"] == "pending"
+        assert data["status"] == "draft"
         assert data["version"] == 1
         assert "id" in data
     
@@ -318,7 +318,7 @@ class TestChangeRequestsAPI:
             "phase": "planner",
             "content": "Workflow test"
         }).json()
-        assert cr["status"] == "pending"
+        assert cr["status"] == "draft"
         
         # Submit for approval
         submit_response = client.post(f"/api/change-requests/{cr['id']}/submit")

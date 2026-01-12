@@ -310,7 +310,7 @@ class TestArtifactsAPI:
         """Test creating artifacts of different types"""
         project = client.post("/api/projects/", json={"name": "Test Project"}).json()
         
-        artifact_types = ["plan", "adr", "test_result", "diff", "other"]
+        artifact_types = ["plan", "adr", "diff", "log", "other"]
         
         for artifact_type in artifact_types:
             response = client.post("/api/artifacts/", json={

@@ -31,6 +31,7 @@ class TaskStatus(str, enum.Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     COMPLETED = "completed"
+    CANCELLED = "cancelled"
 
 
 class ChangeRequestStatus(str, enum.Enum):
@@ -98,6 +99,7 @@ class Task(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     active_version_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     engine_override: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    extra_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     priority: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

@@ -2,6 +2,7 @@
 API routes for tasks.
 """
 
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -58,7 +59,7 @@ class TaskVersionResponse(BaseModel):
     gates_json: Optional[str]
     deps_json: Optional[str]
     extra_data: Optional[str]
-    created_at: str
+    created_at: datetime
     
     class Config:
         from_attributes = True

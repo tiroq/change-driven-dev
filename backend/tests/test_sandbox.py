@@ -14,7 +14,7 @@ class TestSafePathResolver:
     
     def test_resolve_safe_path(self, tmp_path):
         """Test resolving a safe path within root."""
-        resolver = SafePathResolver(str(tmp_path))
+        resolver = SafePathResolver(str(tmp_path), allowed_patterns=["*", "**/*"])
         
         # Create a test file
         test_file = tmp_path / "test.txt"
@@ -69,7 +69,7 @@ class TestSafePathResolver:
     
     def test_is_safe_method(self, tmp_path):
         """Test is_safe method returns bool without exception."""
-        resolver = SafePathResolver(str(tmp_path))
+        resolver = SafePathResolver(str(tmp_path), allowed_patterns=["*", "**/*"])
         
         # Safe path
         assert resolver.is_safe(str(tmp_path / "file.txt"))
