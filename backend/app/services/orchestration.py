@@ -877,7 +877,8 @@ Implement the changes needed to complete this task."""
             gate_results = await self._run_task_gates(
                 db=db,
                 project=project,
-                task_id=task_id
+                task_id=task_id,
+                working_dir=working_dir
             )
             
             gates_passed = gate_results.get("all_passed", False)
