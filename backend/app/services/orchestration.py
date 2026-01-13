@@ -886,7 +886,7 @@ Implement the changes needed to complete this task."""
                 run_logger.info("All gates passed, committing changes")
                 
                 # Commit changes with git
-                git_service = GitService(project.root_path)
+                git_service = GitService(working_dir)
                 
                 # Check if repo exists
                 if await git_service.is_repo():
