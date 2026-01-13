@@ -1062,7 +1062,8 @@ Implement the changes needed to complete this task."""
         self,
         db: Session,
         project,
-        task_id: int
+        task_id: int,
+        working_dir: str
     ) -> Dict[str, Any]:
         """
         Run gates for a task and return results.
@@ -1071,6 +1072,7 @@ Implement the changes needed to complete this task."""
             db: Database session
             project: Project model instance
             task_id: Task ID
+            working_dir: Working directory for the project
             
         Returns:
             Gate execution results dict
@@ -1102,7 +1104,7 @@ Implement the changes needed to complete this task."""
         
         # Load project config
         try:
-            config = ProjectConfig.load_from_project(Path(project.root_path))
+            config = ProjectConfig.load_from_project(Path(working_dir))
             allowed_commands = config.get_allowed_commands()
             blocked_commands = config.get_blocked_commands()
         except Exception:
@@ -1121,7 +1123,7 @@ Implement the changes needed to complete this task."""
         # Execute gates
         results = await gate_runner.run_gates(
             gates=gate_specs,
-            cwd=project.root_path,
+            cwd=working_dir,
             stop_on_failure=False
         )
         
