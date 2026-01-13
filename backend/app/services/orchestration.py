@@ -53,6 +53,9 @@ class OrchestrationService:
         if not engine_name:
             engine_name = project.default_engine
         
+        # Use current working directory if root_path is not set
+        working_dir = project.root_path or str(Path.cwd())
+        
         # Create a "planning" task to track this planner execution
         planning_task = dao.create_task(
             db=db,
@@ -71,7 +74,7 @@ class OrchestrationService:
         )
         
         # Create log path for this run
-        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        log_path = Path(working_dir) / "logs" / f"run_{run.id}.log"
         run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=planning_task.id)
         run_logger.info(f"Starting planner phase for project {project.name}")
         
@@ -79,7 +82,7 @@ class OrchestrationService:
             # Create engine instance
             engine = EngineFactory.create(
                 engine_name,
-                working_directory=project.root_path
+                working_directory=working_dir
             )
             
             # Check engine health
@@ -89,7 +92,7 @@ class OrchestrationService:
             # Start engine session
             session_result = await engine.start_session(
                 context={
-                    "working_directory": project.root_path,
+                    "working_directory": working_dir,
                     "initial_prompt": self._build_planner_prompt(spec_content)
                 }
             )
@@ -416,6 +419,9 @@ class OrchestrationService:
         if not engine_name:
             engine_name = project.default_engine
         
+        # Use current working directory if root_path is not set
+        working_dir = project.root_path or str(Path.cwd())
+        
         # Create run record for this task
         run = dao.create_run(
             db=db,
@@ -424,7 +430,7 @@ class OrchestrationService:
         )
         
         # Create log path for this run
-        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        log_path = Path(working_dir) / "logs" / f"run_{run.id}.log"
         run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=task_id)
         run_logger.info(f"Starting architect phase for task '{task.title}'")
         
@@ -432,7 +438,7 @@ class OrchestrationService:
             # Create engine instance
             engine = EngineFactory.create(
                 engine_name,
-                working_directory=project.root_path
+                working_directory=working_dir
             )
             
             # Check engine health
@@ -442,7 +448,7 @@ class OrchestrationService:
             # Start engine session
             session_result = await engine.start_session(
                 context={
-                    "working_directory": project.root_path,
+                    "working_directory": working_dir,
                     "task": task.title,
                     "task_description": task.description
                 }
