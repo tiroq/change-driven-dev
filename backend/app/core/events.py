@@ -34,6 +34,7 @@ class EventType(str, Enum):
     ARTIFACT_DELETED = "artifact_deleted"
     
     RUN_STARTED = "run_started"
+    RUN_PROGRESS = "run_progress"
     RUN_COMPLETED = "run_completed"
     RUN_FAILED = "run_failed"
     RUN_LOG = "run_log"
