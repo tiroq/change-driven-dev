@@ -246,6 +246,17 @@ class DatabaseManager:
             Base.metadata.drop_all(bind=self._test_engine)
             # In test mode, use create_all for speed
             Base.metadata.create_all(bind=self._test_engine)
+    
+    def close_project_db(self, project_id: int) -> None:
+        """Close and dispose of a project's database connection"""
+        with self._lock:
+            if project_id in self.engines:
+                try:
+                    self.engines[project_id].dispose()
+                except Exception:
+                    pass  # Ignore errors during disposal
+                del self.engines[project_id]
+                del self.session_makers[project_id]
 
 
 # Global database manager instance
