@@ -119,6 +119,9 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(project_id: int, db: Session = Depends(get_db_session)):
     """Delete a project"""
+    # Close project database connection first
+    db_manager.close_project_db(project_id)
+    
     success = dao.delete_project(db, project_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
