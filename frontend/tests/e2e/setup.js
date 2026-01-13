@@ -54,6 +54,12 @@ export async function createTestProject(name = 'Test Project', description = 'E2
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description }),
   });
+  
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to create project: ${response.status} - ${text}`);
+  }
+  
   return await response.json();
 }
 
