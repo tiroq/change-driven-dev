@@ -776,6 +776,9 @@ Provide 2-3 architecture options with trade-offs."""
         if not engine_name:
             engine_name = project.default_engine
         
+        # Use current working directory if root_path is not set
+        working_dir = project.root_path or str(Path.cwd())
+        
         # Create run record for this task
         run = dao.create_run(
             db=db,
@@ -784,7 +787,7 @@ Provide 2-3 architecture options with trade-offs."""
         )
         
         # Create log path for this run
-        log_path = Path(project.root_path) / "logs" / f"run_{run.id}.log"
+        log_path = Path(working_dir) / "logs" / f"run_{run.id}.log"
         run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=task_id)
         run_logger.info(f"Starting coder phase for task '{task.title}'")
         
@@ -795,7 +798,7 @@ Provide 2-3 architecture options with trade-offs."""
             # Create engine instance
             engine = EngineFactory.create(
                 engine_name,
-                working_directory=project.root_path
+                working_directory=working_dir
             )
             
             # Check engine health
@@ -808,7 +811,7 @@ Provide 2-3 architecture options with trade-offs."""
             # Start engine session
             session_result = await engine.start_session(
                 context={
-                    "working_directory": project.root_path,
+                    "working_directory": working_dir,
                     "task": task.title,
                     "task_id": task_id
                 }
