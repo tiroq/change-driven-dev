@@ -252,30 +252,23 @@ class OrchestrationService:
         # Convert to JSON string
         plan_json = json.dumps(plan_data, indent=2)
         
-        # Create artifact using DAO
-        artifact = dao.create_artifact(
-            db=db,
-            project_id=project_id,
-            artifact_type=ArtifactType.PLAN,
-            name="plan.json",
-            file_path="plan.json",
-            run_id=run_id,
-            extra_data=json.dumps({"task_count": len(plan_data.get("tasks", []))})
-        )
-        
-        # Store file
+        # Store file (this creates the artifact AND stores the file)
         import io
         file_obj = io.BytesIO(plan_json.encode('utf-8'))
         
-        artifact_storage.store_artifact(
+        artifact_dict = artifact_storage.store_artifact(
             session=db,
             project_id=project_id,
             task_id=None,
             run_id=run_id,
             artifact_type="plan",
             file_path="plan.json",
-            file_obj=file_obj
+            file_obj=file_obj,
+            extra_data={"task_count": len(plan_data.get("tasks", []))}
         )
+        
+        # Get the artifact object from the dict
+        artifact = dao.get_artifact(db, artifact_dict["id"])
         
         return artifact
     
@@ -305,30 +298,23 @@ class OrchestrationService:
         
         transcript_json = json.dumps(transcript_data, indent=2)
         
-        # Create artifact
-        artifact = dao.create_artifact(
-            db=db,
-            project_id=project_id,
-            artifact_type=ArtifactType.TRANSCRIPT,
-            name=f"{phase}_transcript.json",
-            file_path=f"{phase}_transcript.json",
-            run_id=run_id,
-            extra_data=json.dumps({"message_count": len(transcript)})
-        )
-        
-        # Store file
+        # Store file (this creates the artifact AND stores the file)
         import io
         file_obj = io.BytesIO(transcript_json.encode('utf-8'))
         
-        artifact_storage.store_artifact(
+        artifact_dict = artifact_storage.store_artifact(
             session=db,
             project_id=project_id,
             task_id=None,
             run_id=run_id,
             artifact_type="transcript",
             file_path=f"{phase}_transcript.json",
-            file_obj=file_obj
+            file_obj=file_obj,
+            extra_data={"message_count": len(transcript)}
         )
+        
+        # Get the artifact object from the dict
+        artifact = dao.get_artifact(db, artifact_dict["id"])
         
         return artifact
     
@@ -632,31 +618,23 @@ Provide 2-3 architecture options with trade-offs."""
         # Convert to JSON string
         arch_json = json.dumps(arch_data, indent=2)
         
-        # Create artifact using DAO
-        artifact = dao.create_artifact(
-            db=db,
-            project_id=project_id,
-            artifact_type=ArtifactType.ARCHITECTURE,
-            name="architecture.json",
-            file_path="architecture.json",
-            task_id=task_id,
-            run_id=run_id,
-            extra_data=json.dumps({"option_count": len(arch_data.get("options", []))})
-        )
-        
-        # Store file
+        # Store file (this creates the artifact AND stores the file)
         import io
         file_obj = io.BytesIO(arch_json.encode('utf-8'))
         
-        artifact_storage.store_artifact(
+        artifact_dict = artifact_storage.store_artifact(
             session=db,
             project_id=project_id,
             task_id=task_id,
             run_id=run_id,
             artifact_type="architecture",
             file_path="architecture.json",
-            file_obj=file_obj
+            file_obj=file_obj,
+            extra_data={"option_count": len(arch_data.get("options", []))}
         )
+        
+        # Get the artifact object from the dict
+        artifact = dao.get_artifact(db, artifact_dict["id"])
         
         return artifact
     
@@ -690,23 +668,11 @@ Provide 2-3 architecture options with trade-offs."""
             else:
                 filename = f"ADR_{idx+1:03d}.md"
             
-            # Create artifact
-            artifact = dao.create_artifact(
-                db=db,
-                project_id=project_id,
-                artifact_type=ArtifactType.ADR,
-                name=filename,
-                file_path=filename,
-                task_id=task_id,
-                run_id=run_id,
-                extra_data=None
-            )
-            
-            # Store file
+            # Store file (this creates the artifact AND stores the file)
             import io
             file_obj = io.BytesIO(adr_content.encode('utf-8'))
             
-            artifact_storage.store_artifact(
+            artifact_dict = artifact_storage.store_artifact(
                 session=db,
                 project_id=project_id,
                 task_id=task_id,
@@ -715,6 +681,9 @@ Provide 2-3 architecture options with trade-offs."""
                 file_path=filename,
                 file_obj=file_obj
             )
+            
+            # Get the artifact object from the dict
+            artifact = dao.get_artifact(db, artifact_dict["id"])
             
             adr_artifacts.append(artifact)
         
