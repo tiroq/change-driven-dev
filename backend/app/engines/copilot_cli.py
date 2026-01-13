@@ -206,10 +206,12 @@ class CopilotCLIEngine:
             )
             self._transcript.append(user_msg)
             
-            # Start process
+            # Start process with -p flag for non-interactive mode
             process = await asyncio.create_subprocess_exec(
                 "copilot",
+                "-p",
                 command,
+                "--allow-all-tools",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._working_directory)
@@ -259,10 +261,12 @@ class CopilotCLIEngine:
             Dict with success, output, exit_code, error
         """
         try:
-            # Execute command
+            # Execute command with -p flag for non-interactive mode
             process = await asyncio.create_subprocess_exec(
                 "copilot",
+                "-p",
                 prompt,
+                "--allow-all-tools",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._working_directory)
