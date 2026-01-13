@@ -73,6 +73,18 @@ class OrchestrationService:
             engine=engine_name
         )
         
+        # Emit run started event
+        event = Event(
+            event_type=EventType.RUN_STARTED,
+            project_id=project_id,
+            data={
+                "run_id": run.id,
+                "phase": PhaseType.PLANNER.value,
+                "status": "started"
+            }
+        )
+        event_bus.publish(event)
+        
         # Create log path for this run
         log_path = Path(working_dir) / "logs" / f"run_{run.id}.log"
         run_logger = RunLogger(run_id=run.id, log_path=log_path, project_id=project_id, task_id=planning_task.id)
@@ -102,6 +114,19 @@ class OrchestrationService:
             
             run_logger.info("Engine session started, executing planner")
             
+            # Emit progress event
+            event = Event(
+                event_type=EventType.RUN_PROGRESS,
+                project_id=project_id,
+                data={
+                    "run_id": run.id,
+                    "phase": PhaseType.PLANNER.value,
+                    "status": "executing",
+                    "message": "Executing planner with AI engine..."
+                }
+            )
+            event_bus.publish(event)
+            
             # Execute planner
             # Read planner prompt template
             planner_prompt_path = Path(__file__).parent.parent.parent.parent / "PROMPTS" / "planner.md"
@@ -120,10 +145,35 @@ class OrchestrationService:
             if not result.success:
                 raise RuntimeError(f"Planner execution failed: {result.error}")
             
-            run_logger.info("Planner completed, parsing results")
+            run_logger.info(f"Planner completed, parsing results (response length: {len(result.content)} chars)")
+            
+            # Emit progress event
+            event = Event(
+                event_type=EventType.RUN_PROGRESS,
+                project_id=project_id,
+                data={
+                    "run_id": run.id,
+                    "phase": PhaseType.PLANNER.value,
+                    "status": "parsing",
+                    "message": "Parsing plan from AI response..."
+                }
+            )
+            event_bus.publish(event)
+            
+            if not result.content or not result.content.strip():
+                run_logger.warning("Engine returned empty response - this may indicate an engine configuration issue")
+                run_logger.info("The copilot CLI requires interactive mode. Consider using a different engine or implementing interactive session handling.")
             
             # Parse plan from response
             plan_data = self._parse_plan_from_response(result.content)
+            
+            # If no tasks were created, log a helpful warning
+            if not plan_data.get("tasks"):
+                run_logger.warning(
+                    "No tasks were created from the plan. "
+                    "This usually means the AI engine didn't return properly formatted JSON. "
+                    "Check the plan artifact and transcript for details."
+                )
             
             # Save plan as artifact
             plan_artifact = self._save_plan_artifact(
@@ -213,6 +263,18 @@ class OrchestrationService:
         Parse plan.json from engine response.
         Looks for JSON code blocks or tries to parse the entire response.
         """
+        # Check if response is empty
+        if not response_content or not response_content.strip():
+            return {
+                "tasks": [],
+                "metadata": {
+                    "generated_at": datetime.now().isoformat(),
+                    "note": "Failed to parse structured plan, manual review needed",
+                    "error": "Engine returned empty response"
+                },
+                "raw_response": response_content
+            }
+        
         # Try to find JSON code block
         if "```json" in response_content:
             start = response_content.find("```json") + 7
@@ -230,13 +292,15 @@ class OrchestrationService:
         try:
             plan_data = json.loads(json_str)
             return plan_data
-        except json.JSONDecodeError:
-            # Fallback: create basic structure
+        except json.JSONDecodeError as e:
+            # Fallback: create basic structure with error details
             return {
                 "tasks": [],
                 "metadata": {
                     "generated_at": datetime.now().isoformat(),
-                    "note": "Failed to parse structured plan, manual review needed"
+                    "note": "Failed to parse structured plan, manual review needed",
+                    "parse_error": str(e),
+                    "content_preview": response_content[:200] if response_content else "empty"
                 },
                 "raw_response": response_content
             }
