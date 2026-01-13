@@ -208,7 +208,7 @@ class CopilotCLIEngine:
             
             # Start process
             process = await asyncio.create_subprocess_exec(
-                "github-copilot-cli",
+                "copilot",
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -261,7 +261,7 @@ class CopilotCLIEngine:
         try:
             # Execute command
             process = await asyncio.create_subprocess_exec(
-                "github-copilot-cli",
+                "copilot",
                 prompt,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -400,7 +400,7 @@ class CopilotCLIEngine:
         """
         try:
             process = await asyncio.create_subprocess_exec(
-                "github-copilot-cli",
+                "copilot",
                 "--version",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
